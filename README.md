@@ -43,9 +43,11 @@ thread id, creating a smee.io relay channel, giving you the webhook URL + secret
 to paste into GitHub, and adding the route. Test it with a push — the turn should
 arrive within seconds.
 
-For Gmail: label-based watching over IMAP IDLE. You bring your own Google OAuth
-client (Desktop type) because bridgehead is self-hosted — see
-`scripts/demo/m4-gmail.md`. Run `bridgehead auth gmail` once to consent.
+For Gmail: label-based watching over IMAP IDLE, with two auth options — a Gmail
+app password (`bridgehead auth imap`, simplest; also works for any other IMAP
+server) or your own Google OAuth client (`bridgehead auth gmail`, Desktop type —
+you bring your own because bridgehead is self-hosted). See
+`scripts/demo/m4-gmail.md`.
 
 ## What a delivered turn looks like
 

@@ -36,7 +36,10 @@ If the user prefers fresh threads per event (e.g. "spawn a worktree and investig
 
 ### Gmail
 1. Ask which Gmail label to watch (never watch everything — a label is required) and the Gmail address.
-2. Call `bridge_source_setup_gmail` with `{label, user}` and relay the returned instructions: the user creates their own Google OAuth client (Desktop type) and runs `bridgehead auth gmail` in a terminal to complete consent.
+2. Ask which auth they prefer:
+   - **App password** (simpler): call `bridge_source_setup_gmail` with `{label, user, authKind: "imap-password"}`. The user creates an app password at https://myaccount.google.com/apppasswords (needs 2-Step Verification) and runs `bridgehead auth imap` in a terminal to store it. Also works for non-Gmail IMAP servers via `host`/`port`.
+   - **OAuth**: call `bridge_source_setup_gmail` with `{label, user}`. The user creates their own Google OAuth client (Desktop type) and runs `bridgehead auth gmail` in a terminal to complete consent.
+3. Relay the returned instructions verbatim either way.
 
 ## 3. Create the route
 

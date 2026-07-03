@@ -1,5 +1,13 @@
 # M4 demo: Gmail label → Codex thread
 
+Two auth options. **Option A — app password** (no Google Cloud project needed):
+enable 2-Step Verification, create an app password at
+https://myaccount.google.com/apppasswords, then in Codex ask for the watch with
+auth kind `imap-password` and run `bridgehead auth imap` when instructed. The
+same path works for non-Gmail IMAP servers (pass `host`/`port`).
+
+**Option B — OAuth**, as follows:
+
 1. In Google Cloud Console create an OAuth client, type **Desktop app** (any project;
    the OAuth consent screen can stay in *Testing* with your address as a test user).
    You bring your own client because bridgehead is self-hosted — publishing a shared

@@ -212,13 +212,24 @@ export async function runMcpServer(): Promise<void> {
   server.registerTool(
     "bridge_source_setup_gmail",
     {
-      title: "Set up the Gmail event source",
+      title: "Set up the Gmail/IMAP event source",
       description:
-        "Register a Gmail label watch and return the OAuth setup instructions. The browser OAuth " +
-        "flow itself runs in a terminal via `bridgehead auth gmail`.",
+        "Register a mail label watch and return setup instructions. Two auth options: " +
+        '"gmail-oauth" (default — user brings their own Google OAuth client, then runs ' +
+        '`bridgehead auth gmail`) or "imap-password" (a Gmail app password or any IMAP ' +
+        "server's password, then `bridgehead auth imap` — simpler, no OAuth client needed).",
       inputSchema: {
-        label: z.string().min(1).describe("Gmail label to watch, e.g. agent-inbox"),
-        user: z.string().email().describe("Gmail address"),
+        label: z.string().min(1).describe("Label/folder to watch, e.g. agent-inbox"),
+        user: z.string().email().describe("Mail address"),
+        authKind: z
+          .enum(["gmail-oauth", "imap-password"])
+          .optional()
+          .describe("Default gmail-oauth. Use imap-password for app passwords or non-Gmail IMAP."),
+        host: z
+          .string()
+          .optional()
+          .describe("imap-password only: IMAP host (default imap.gmail.com)"),
+        port: z.number().int().positive().optional().describe("imap-password only: default 993"),
       },
     },
     async (args) => call("POST", "/api/sources/gmail/setup", args),

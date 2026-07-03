@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { authGmail } from "./cli/auth-gmail.js";
+import { authImap } from "./cli/auth-imap.js";
 import { installService, uninstallService } from "./cli/service.js";
 import { apiFetch, readDaemonState } from "./client.js";
 import { loadConfig } from "./config.js";
@@ -117,6 +118,22 @@ auth
   .option("--client-secret <secret>", "Google OAuth client secret")
   .action(async (opts: { source?: string; clientId?: string; clientSecret?: string }) => {
     await authGmail(createLogger(), opts);
+  });
+auth
+  .command("imap")
+  .description(
+    "Store the password for a password-authenticated mail source (e.g. a Gmail app password)",
+  )
+  .option(
+    "--source <id>",
+    'source id (from bridge_source_setup_gmail with authKind "imap-password")',
+  )
+  .option(
+    "--password <password>",
+    "provide non-interactively (visible in shell history — prefer the prompt)",
+  )
+  .action(async (opts: { source?: string; password?: string }) => {
+    await authImap(createLogger(), opts);
   });
 
 const service = program.command("service").description("Run the daemon as a login service");

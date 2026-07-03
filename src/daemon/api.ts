@@ -209,30 +209,44 @@ export function createApi(ctx: ApiContext): Hono {
       .object({
         label: z.string().min(1),
         user: z.string().email(),
+        authKind: z.enum(["gmail-oauth", "imap-password"]).default("gmail-oauth"),
+        /** imap-password only; defaults suit Gmail app passwords. */
+        host: z.string().min(1).default("imap.gmail.com"),
+        port: z.number().int().positive().default(993),
+        secure: z.boolean().default(true),
       })
       .safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
-    const sourceId = deterministicSourceId("gmail", `${parsed.data.user}:${parsed.data.label}`);
+    const { label, user, authKind, host, port, secure } = parsed.data;
+    const sourceId = deterministicSourceId("gmail", `${user}:${label}`);
     const existing = ctx.stores.sources.get(sourceId);
     const config = GmailSourceConfigSchema.parse({
-      label: parsed.data.label,
-      auth: { kind: "gmail-oauth", user: parsed.data.user },
+      label,
+      auth:
+        authKind === "gmail-oauth"
+          ? { kind: "gmail-oauth", user }
+          : { kind: "imap-password", user, host, port, secure },
       // Re-running setup must not reset the UID watermark and replay old mail.
       ...(existing?.config.state ? { state: existing.config.state } : {}),
     });
     const record = ctx.stores.sources.upsert({ id: sourceId, kind: "gmail", config });
-    return c.json(
-      {
-        sourceId: record.id,
-        instructions: [
-          "Gmail needs a one-time OAuth consent in a browser, so this step runs in a terminal:",
-          `1. Create an OAuth client (Desktop app) in Google Cloud Console with the Gmail IMAP scope (https://mail.google.com/). Bridgehead is self-hosted, so you bring your own client id/secret — this avoids Google's restricted-scope app verification.`,
-          `2. Run: bridgehead auth gmail --source ${record.id}`,
-          `3. The daemon will start watching label "${parsed.data.label}" once auth completes.`,
-        ],
-      },
-      201,
-    );
+    const instructions =
+      authKind === "gmail-oauth"
+        ? [
+            "Gmail needs a one-time OAuth consent in a browser, so this step runs in a terminal:",
+            `1. Create an OAuth client (Desktop app) in Google Cloud Console with the Gmail IMAP scope (https://mail.google.com/). Bridgehead is self-hosted, so you bring your own client id/secret — this avoids Google's restricted-scope app verification.`,
+            `2. Run: bridgehead auth gmail --source ${record.id}`,
+            `3. The daemon will start watching label "${label}" once auth completes.`,
+          ]
+        : [
+            `This source authenticates with a password against ${host}:${port}.`,
+            host === "imap.gmail.com"
+              ? "1. For Gmail, create an app password at https://myaccount.google.com/apppasswords (requires 2-Step Verification). Your normal account password will not work."
+              : "1. Use the account's IMAP password or an app password if the provider supports them.",
+            `2. Run: bridgehead auth imap --source ${record.id}`,
+            `3. The daemon will start watching label/folder "${label}" once the password is stored.`,
+          ];
+    return c.json({ sourceId: record.id, authKind, instructions }, 201);
   });
 
   app.post("/api/sources/:id/restart", async (c) => {
