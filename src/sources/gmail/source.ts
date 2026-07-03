@@ -101,7 +101,7 @@ export class GmailImapSource implements Source {
         await this.connectAndWatch();
         backoffMs = 1_000; // clean session — reset backoff
       } catch (err) {
-        this.lastError = err instanceof Error ? err.message : String(err);
+        this.lastError = imapErrorText(err);
         this.ctx.logger.warn({ source: this.id, err: this.lastError }, "gmail connection error");
       }
       this.connected = false;
@@ -117,6 +117,10 @@ export class GmailImapSource implements Source {
     const client = new ImapFlow({
       ...(await this.connectionOptions()),
       logger: false,
+      // Fail fast instead of hanging when Gmail tarpits repeated bad logins.
+      // No socketTimeout: a healthy IDLE connection is legitimately quiet.
+      connectionTimeout: 30_000,
+      greetingTimeout: 30_000,
     });
     this.client = client;
 
@@ -244,4 +248,13 @@ export class GmailImapSource implements Source {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** imapflow throws generic "Command failed"; the server's reason lives in responseText. */
+function imapErrorText(err: unknown): string {
+  if (err instanceof Error) {
+    const responseText = (err as { responseText?: string }).responseText;
+    return responseText ? `${err.message}: ${responseText}` : err.message;
+  }
+  return String(err);
 }

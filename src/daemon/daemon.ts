@@ -132,4 +132,7 @@ export async function runDaemon(logger: Logger): Promise<void> {
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   });
+  // Lingering source sockets (e.g. a tarpitted IMAP connect) must not keep a
+  // cleanly-stopped daemon alive as a zombie.
+  process.exit(0);
 }
