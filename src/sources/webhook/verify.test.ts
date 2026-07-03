@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { WebhookSourceConfigSchema } from "./source.js";
 import { verifyWebhook } from "./verify.js";
 
 const secret = "shhh";
@@ -50,6 +51,35 @@ describe("verifyWebhook — hmac-sha256", () => {
     expect(verifyWebhook(config, secret, body, hmac("hex"))).toBe(false); // prefix required
     expect(verifyWebhook(config, secret, body, undefined)).toBe(false);
     expect(verifyWebhook(config, secret, body, "")).toBe(false);
+  });
+});
+
+describe("WebhookSourceConfigSchema", () => {
+  it("rejects secret-header verification in smee mode (relay would leak the bearer)", () => {
+    const secretHeader = { kind: "secret-header", header: "x-token" } as const;
+    expect(
+      WebhookSourceConfigSchema.safeParse({
+        name: "p",
+        mode: "smee",
+        verification: secretHeader,
+      }).success,
+    ).toBe(false);
+    // allowed behind your own listen tunnel
+    expect(
+      WebhookSourceConfigSchema.safeParse({
+        name: "p",
+        mode: "listen",
+        verification: secretHeader,
+      }).success,
+    ).toBe(true);
+    // hmac is fine over smee
+    expect(
+      WebhookSourceConfigSchema.safeParse({
+        name: "p",
+        mode: "smee",
+        verification: { kind: "hmac-sha256", header: "x-sig" },
+      }).success,
+    ).toBe(true);
   });
 });
 

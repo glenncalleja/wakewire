@@ -271,6 +271,15 @@ export function createApi(ctx: ApiContext): Hono {
       .safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
     const input = parsed.data;
+    if (input.mode === "smee" && input.verification.kind === "secret-header") {
+      return c.json(
+        {
+          error:
+            'secret-header verification would transit the public smee relay and expose the secret — use mode "listen" (your own tunnel) or hmac-sha256',
+        },
+        400,
+      );
+    }
     const sourceId = deterministicSourceId("webhook", input.name);
     const existing = ctx.stores.sources.get(sourceId);
 

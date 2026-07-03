@@ -14,6 +14,12 @@ describe("WebhookMappingSchema", () => {
     // Exact round-trip: if zod strips any key, the tool/API contract has drifted.
     expect(WebhookMappingSchema.parse(input)).toEqual(input);
   });
+
+  it('rejects a mapping alias named "provider" (reserved source identity)', () => {
+    expect(WebhookMappingSchema.safeParse({ fields: { provider: "data.attacker" } }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("valueAt", () => {
@@ -86,6 +92,17 @@ describe("mapWebhookEvent", () => {
       url: "https://x/1",
     });
     expect(JSON.stringify(event)).not.toContain("SECRET-DO-NOT-LEAK");
+  });
+
+  it("trusted provider identity cannot be overridden by payload data", () => {
+    // even if a mapping somehow carried a provider field, source identity wins
+    const event = mapWebhookEvent({
+      provider: "sentry",
+      mapping: { fields: { title: "data.title" } },
+      body: { provider: "attacker-forged", data: { title: "t" } },
+      rawBody: "{}",
+    });
+    expect(event.payload.provider).toBe("sentry");
   });
 
   it("survives with no mapping at all (capture-mode events still flow)", () => {

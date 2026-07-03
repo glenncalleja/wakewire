@@ -25,7 +25,11 @@ export const SlackMatchSchema = z
      * "message.<subtype>", "reaction_added". Bare "message" matches all subtypes.
      */
     events: z.array(z.string().min(1)).min(1).default(["app_mention"]),
-    /** Filter on the sender: user id (U…) or a case-insensitive name substring. */
+    /**
+     * Filter on the sender: a Slack user id (U…, stable) or an exact
+     * case-insensitive display name. Names are mutable and non-unique — use an
+     * id when the filter is a trust boundary, not just a convenience.
+     */
     fromUser: z.string().min(1).optional(),
     /** Case-insensitive substring the message text must contain. */
     textContains: z.string().min(1).optional(),

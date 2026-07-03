@@ -45,7 +45,13 @@ export const WebhookMappingSchema = z.object({
     .optional()
     .describe('One-line summary template over mapped aliases, e.g. "{{level}}: {{title}}".'),
   fields: z
-    .record(z.string().regex(/^\w+$/, "aliases must be word characters"), z.string().min(1))
+    .record(
+      z
+        .string()
+        .regex(/^\w+$/, "aliases must be word characters")
+        .refine((a) => a !== "provider", '"provider" is reserved for the source identity'),
+      z.string().min(1),
+    )
     .default({})
     .describe("alias → dot.path extractions. ONLY these fields reach the model."),
 });
@@ -90,7 +96,9 @@ export function mapWebhookEvent(args: {
     deliveryId,
     occurredAt,
     summary: truncate(summary, 300),
-    payload: { provider, ...fields },
+    // provider LAST so the trusted source identity always wins, even if an
+    // (already schema-rejected) mapping alias were named "provider".
+    payload: { ...fields, provider },
   };
 }
 

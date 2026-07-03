@@ -44,7 +44,13 @@ export function buildDigestPrompt(input: {
 }): string {
   const { routeName, source, instructions, events } = input;
   const latest = events[events.length - 1];
-  const lines = events.map((e) => `- ${formatLocalTime(e.occurredAt)} ${e.kind}: ${e.summary}`);
+  // Summaries here sit inside the <event> fence as plain text — escape "</" the
+  // same way fenceSafeJson does so a summary containing "</event>" cannot close
+  // the fence early, and drop newlines that could forge structure.
+  const lines = events.map(
+    (e) =>
+      `- ${formatLocalTime(e.occurredAt)} ${fenceSafeText(e.kind)}: ${fenceSafeText(e.summary)}`,
+  );
   const latestJson = latest ? fenceSafeJson({ summary: latest.summary, ...latest.payload }) : "{}";
 
   return [
@@ -68,6 +74,11 @@ export function buildDigestPrompt(input: {
 
 export function fenceSafeJson(value: unknown): string {
   return JSON.stringify(value, null, 2).replaceAll("</", "<\\/");
+}
+
+/** Plain-text equivalent of fenceSafeJson for text rendered inside the fence. */
+export function fenceSafeText(text: string): string {
+  return text.replace(/\s+/g, " ").replaceAll("</", "<\\/").trim();
 }
 
 function formatLocalTime(iso: string): string {

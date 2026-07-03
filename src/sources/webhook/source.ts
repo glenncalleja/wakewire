@@ -6,20 +6,29 @@ import type { Source, SourceContext } from "../types.js";
 import { mapWebhookEvent, WebhookMappingSchema } from "./map.js";
 import { verifyWebhook, WebhookVerificationSchema } from "./verify.js";
 
-export const WebhookSourceConfigSchema = z.object({
-  /** Provider label ("sentry", "clickup"): used in route matching and the source id. */
-  name: z
-    .string()
-    .min(1)
-    .max(40)
-    .regex(/^[a-z0-9][a-z0-9_-]*$/i, "letters, digits, - and _ only"),
-  mode: z.enum(["smee", "listen"]).default("smee"),
-  smeeUrl: z.string().optional(),
-  verification: WebhookVerificationSchema,
-  mapping: WebhookMappingSchema.optional(),
-  /** While > 0, incoming raw payloads are stored for mapping authoring. */
-  captureRemaining: z.number().int().min(0).default(0),
-});
+export const WebhookSourceConfigSchema = z
+  .object({
+    /** Provider label ("sentry", "clickup"): used in route matching and the source id. */
+    name: z
+      .string()
+      .min(1)
+      .max(40)
+      .regex(/^[a-z0-9][a-z0-9_-]*$/i, "letters, digits, - and _ only"),
+    mode: z.enum(["smee", "listen"]).default("smee"),
+    smeeUrl: z.string().optional(),
+    verification: WebhookVerificationSchema,
+    mapping: WebhookMappingSchema.optional(),
+    /** While > 0, incoming raw payloads are stored for mapping authoring. */
+    captureRemaining: z.number().int().min(0).default(0),
+  })
+  .refine((c) => !(c.mode === "smee" && c.verification.kind === "secret-header"), {
+    path: ["verification"],
+    // secret-header is a bearer token; the smee relay is readable by anyone with
+    // the channel URL, so one observed event leaks the reusable secret. Require
+    // listen mode (your own tunnel) for it, or use hmac-sha256 over smee.
+    message:
+      "secret-header verification is not allowed in smee mode (the relay is public and would expose the secret) — use listen mode or hmac-sha256",
+  });
 
 export type WebhookSourceConfig = z.infer<typeof WebhookSourceConfigSchema>;
 

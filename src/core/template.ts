@@ -41,22 +41,44 @@ export function allowedFields(source: BridgeEvent["source"]): string[] {
   return [...COMMON_FIELDS, ...SOURCE_FIELDS[source]];
 }
 
+const FIELD_MAX = 300;
+
+/**
+ * Interpolated field values land in the TRUSTED instructions block, but their
+ * content is attacker-controlled (a PR title, email subject, Slack display
+ * name, mapped webhook field). Neutralize structural injection: collapse all
+ * whitespace to single spaces (no newlines to forge fake sections), strip the
+ * literal envelope markers, and cap length. This can't stop a persuasive
+ * single-line sentence — that text also appears in the fenced block below — but
+ * it stops a value from forging the trusted/untrusted structure itself.
+ */
+export function sanitizeFieldValue(value: string): string {
+  return value
+    .replace(/[\s]+/g, " ")
+    .replaceAll("</", "<​/") // defang a fence-closing "</event>"
+    .replace(/INSTRUCTIONS\b|UNTRUSTED EVENT DATA|\[bridgehead (event|digest)\]/gi, "[…]")
+    .trim()
+    .slice(0, FIELD_MAX);
+}
+
 /** Build the whitelisted field map for an event. Payload values beyond the whitelist never leak in. */
 export function templateFields(routeName: string, event: BridgeEvent): Record<string, string> {
+  // routeName is operator-authored (trusted); everything else is event-derived
+  // and gets sanitized before it can reach the instruction block.
   const fields: Record<string, string> = {
     routeName,
     source: event.source,
-    kind: event.kind,
-    deliveryId: event.deliveryId,
-    occurredAt: event.occurredAt,
-    summary: event.summary,
+    kind: sanitizeFieldValue(event.kind),
+    deliveryId: sanitizeFieldValue(event.deliveryId),
+    occurredAt: sanitizeFieldValue(event.occurredAt),
+    summary: sanitizeFieldValue(event.summary),
   };
   const keys =
     event.source === "webhook" ? Object.keys(event.payload) : SOURCE_FIELDS[event.source];
   for (const key of keys) {
     const value = event.payload[key];
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-      fields[key] = String(value);
+      fields[key] = sanitizeFieldValue(String(value));
     }
   }
   return fields;

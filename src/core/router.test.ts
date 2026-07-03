@@ -149,12 +149,12 @@ describe("matchRoutes — slack", () => {
     expect(matchRoutes([r], slackEvent({ kind: "message.channel_topic" }))).toHaveLength(1);
   });
 
-  it("applies fromUser (id or name substring) and textContains", () => {
+  it("applies fromUser (exact id or exact name) and textContains", () => {
     const r = route({
       source: "slack",
       match: { events: ["app_mention"], fromUser: "glenn", textContains: "deploy" },
     });
-    expect(matchRoutes([r], slackEvent({}))).toHaveLength(1);
+    expect(matchRoutes([r], slackEvent({}))).toHaveLength(1); // userName "glenn" exact
     expect(
       matchRoutes([r], slackEvent({ payload: { channel: "C1", userName: "sam", text: "deploy" } })),
     ).toHaveLength(0);
@@ -166,6 +166,23 @@ describe("matchRoutes — slack", () => {
     ).toHaveLength(0);
     const byId = route({ source: "slack", match: { events: ["app_mention"], fromUser: "U1" } });
     expect(matchRoutes([byId], slackEvent({}))).toHaveLength(1);
+  });
+
+  it("fromUser name match is exact, not substring (spoof resistance)", () => {
+    const r = route({ source: "slack", match: { events: ["app_mention"], fromUser: "glenn" } });
+    // an impostor embedding the name in their display name must NOT match
+    expect(
+      matchRoutes(
+        [r],
+        slackEvent({
+          payload: { channel: "C1", user: "Uimposter", userName: "glenn (the real one) 😈" },
+        }),
+      ),
+    ).toHaveLength(0);
+    // and a legit longer name isn't accidentally matched by a short filter
+    expect(
+      matchRoutes([r], slackEvent({ payload: { channel: "C1", userName: "glennifer" } })),
+    ).toHaveLength(0);
   });
 });
 

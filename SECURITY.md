@@ -18,11 +18,22 @@ enabling `workspace-write` on anything.
   reach the instruction block, and unknown fields are a hard error.
 - Payloads are trimmed at the source: whitelisted fields only, commit messages
   ≤500 chars, email bodies ≤4,000 chars, HTML converted to text with a real parser.
-- **Residual risk:** fencing is a strong hint, not a guarantee. A sufficiently
-  persuasive payload may still influence the model. This is why gmail routes are
-  *forced* read-only and github routes default to read-only. Injected turns run
-  with `approvalPolicy: never` — the sandbox is the enforcement boundary, so keep
-  it tight.
+- Route templates interpolate a few event-derived fields ({{summary}},
+  {{subject}}, {{title}}, {{userName}}, mapped webhook fields) into the trusted
+  instruction block. Those values are attacker-controlled, so before
+  interpolation they are sanitized: whitespace/newlines collapsed to single
+  spaces, the literal envelope markers ("INSTRUCTIONS", "UNTRUSTED EVENT DATA",
+  "</…", "[bridgehead …]") defanged, and length capped. A value therefore cannot
+  forge the trusted/untrusted structure — though the same text still appears,
+  correctly, inside the fenced block.
+- Rate-limit digest turns render event summaries as plain text inside the fence;
+  those summaries are `</`-escaped and newline-stripped exactly like the JSON
+  block, so a summary containing `</event>` cannot close the fence early.
+- **Residual risk:** fencing and sanitization stop *structural* injection, not a
+  persuasive single-line sentence. A sufficiently crafted payload may still
+  influence the model. This is why gmail routes are *forced* read-only and github
+  routes default to read-only. Injected turns run with `approvalPolicy: never` —
+  the sandbox is the enforcement boundary, so keep it tight.
 
 ## Webhook ingress
 
@@ -48,6 +59,28 @@ enabling `workspace-write` on anything.
   `~/.bridgehead/secrets.json` (0600) with a loud warning in the logs.
 - Secrets are never logged and never returned by the API after setup time.
 
+## Generic webhook specifics
+
+- **`secret-header` is bearer auth and is rejected in smee mode.** The smee relay
+  is readable by anyone with the channel URL, so a shared secret sent verbatim in
+  a header would leak to a relay observer after one legitimate event. Setup
+  refuses `secret-header` + `smee`; use `hmac-sha256` (the secret never transits,
+  only a per-body signature) over smee, or `secret-header` only behind your own
+  `listen`-mode tunnel.
+- **Replay over a public relay.** HMAC binds the body, not the delivery-id
+  header. An observer who captures one valid signed request off the smee relay
+  can re-POST the same body with a different delivery-id header and bypass
+  per-route dedup, re-triggering a *genuine* event (it cannot forge new content —
+  the body signature still holds). Dedup keyed on the body hash (the default when
+  no id path/header is mapped) is replay-resistant because the key is a function
+  of the signed body; header/path-based ids are not. For sources where replay
+  re-triggering matters, prefer body-hash dedup and/or `listen` mode so the relay
+  is never observable. Rate-limit coalescing also caps the blast radius of a
+  replay flood.
+- The `provider` payload key is reserved: it always carries the source's
+  configured identity (used for routing) and cannot be overridden by a mapping
+  alias (rejected at the schema, and written last regardless).
+
 ## Slack specifics
 
 - Socket Mode means no inbound listener at all — the daemon dials out with the
@@ -61,6 +94,10 @@ enabling `workspace-write` on anything.
 - Watch-everything is rejected: `message` routes must name channels;
   mention-only routes are bounded by where the bot has been invited. Bot-posted
   messages are skipped by default so two integrations can't ping-pong.
+- `fromUser` scoping matches a Slack user id (`U…`, stable) exactly, or the
+  display name exactly (case-insensitive). Display names are mutable and can
+  collide, so name-based `fromUser` is a convenience filter, **not** an
+  authorization boundary — use a user id when it needs to be one.
 
 ## Blast-radius defaults
 

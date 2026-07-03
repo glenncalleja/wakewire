@@ -64,10 +64,15 @@ function matchSlack(match: SlackMatch, event: BridgeEvent): boolean {
   }
 
   if (match.fromUser) {
+    // Exact match only. A substring match on the mutable, non-unique Slack
+    // display name is trivially spoofable; exact match still isn't an
+    // authorization boundary (display names can collide) — prefer a user id
+    // (U…) when scoping matters. See SECURITY.md.
     const user = str(event.payload.user);
-    const userName = str(event.payload.userName).toLowerCase();
+    const userName = str(event.payload.userName);
     const wanted = match.fromUser;
-    if (user !== wanted && !userName.includes(wanted.toLowerCase())) return false;
+    const nameMatches = userName.localeCompare(wanted, undefined, { sensitivity: "accent" }) === 0;
+    if (user !== wanted && !nameMatches) return false;
   }
 
   if (match.textContains) {
