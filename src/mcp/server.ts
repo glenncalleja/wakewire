@@ -210,6 +210,17 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
+    "bridge_source_remove",
+    {
+      title: "Remove a bridgehead source",
+      description:
+        "Stop and delete an event source by id (see bridge_status for ids). Also removes its stored secrets.",
+      inputSchema: { id: z.string().min(1) },
+    },
+    async ({ id }) => call("DELETE", `/api/sources/${encodeURIComponent(id)}`),
+  );
+
+  server.registerTool(
     "bridge_source_setup_gmail",
     {
       title: "Set up the Gmail/IMAP event source",

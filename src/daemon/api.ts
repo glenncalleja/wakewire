@@ -254,6 +254,25 @@ export function createApi(ctx: ApiContext): Hono {
     return ok ? c.json({ ok: true }) : c.json({ error: "source not found" }, 404);
   });
 
+  app.delete("/api/sources/:id", async (c) => {
+    const id = c.req.param("id");
+    const record = ctx.stores.sources.get(id);
+    if (!record) return c.json({ error: "source not found" }, 404);
+    await ctx.sources.remove(id);
+    // Best-effort secret cleanup for the well-known names of this source kind.
+    for (const name of record.kind === "github"
+      ? [secretNames.githubWebhookSecret(id)]
+      : [
+          secretNames.gmailClientId(id),
+          secretNames.gmailClientSecret(id),
+          secretNames.gmailRefreshToken(id),
+          secretNames.imapPassword(id),
+        ]) {
+      ctx.secrets.delete(name);
+    }
+    return c.json({ ok: true });
+  });
+
   // --- test injection (M1 demo + smoke tests) ---
 
   app.post("/api/inject", async (c) => {

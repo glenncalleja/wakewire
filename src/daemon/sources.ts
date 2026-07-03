@@ -32,6 +32,13 @@ export class SourceManager {
     }
   }
 
+  /** Stop the live instance (if any) and delete the DB record. */
+  async remove(id: string): Promise<boolean> {
+    if (!this.stores.sources.get(id)) return false;
+    await this.stopOne(id);
+    return this.stores.sources.remove(id);
+  }
+
   /** (Re)create a source from its DB record — used after setup/auth changes. */
   async restart(id: string): Promise<boolean> {
     if (!this.stores.sources.get(id)) return false;
