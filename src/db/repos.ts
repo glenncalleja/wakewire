@@ -32,9 +32,11 @@ export interface Delivery {
   updatedAt: string;
 }
 
+export type SourceKind = "github" | "gmail" | "slack";
+
 export interface SourceRecord {
   id: string;
-  kind: "github" | "gmail";
+  kind: SourceKind;
   config: Record<string, unknown>;
   enabled: boolean;
 }
@@ -358,7 +360,7 @@ export class SourceStore {
 
   upsert(record: {
     id?: string;
-    kind: "github" | "gmail";
+    kind: SourceKind;
     config: Record<string, unknown>;
     enabled?: boolean;
   }): SourceRecord {
@@ -390,7 +392,7 @@ export class SourceStore {
     return this.list().filter((s) => s.enabled);
   }
 
-  findByKind(kind: "github" | "gmail"): SourceRecord[] {
+  findByKind(kind: SourceKind): SourceRecord[] {
     return this.list().filter((s) => s.kind === kind);
   }
 

@@ -6,8 +6,8 @@ import { z } from "zod";
  * and sink never see raw provider payloads.
  */
 export const BridgeEventSchema = z.object({
-  source: z.enum(["github", "gmail"]),
-  /** e.g. "push", "pull_request.opened", "email" */
+  source: z.enum(["github", "gmail", "slack"]),
+  /** e.g. "push", "pull_request.opened", "email", "app_mention", "message" */
   kind: z.string().min(1),
   /** Source-native unique id: X-GitHub-Delivery, RFC 5322 Message-ID. */
   deliveryId: z.string().min(1),

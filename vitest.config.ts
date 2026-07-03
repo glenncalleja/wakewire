@@ -11,6 +11,7 @@ export default defineConfig({
         "src/sources/github/verify.ts",
         "src/sources/github/trim.ts",
         "src/sources/gmail/extract.ts",
+        "src/sources/slack/normalize.ts",
         "src/db/**/*.ts",
       ],
       exclude: ["src/**/*.test.ts"],

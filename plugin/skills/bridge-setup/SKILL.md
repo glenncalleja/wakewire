@@ -41,6 +41,11 @@ If the user prefers fresh threads per event (e.g. "spawn a worktree and investig
    - **OAuth**: call `bridge_source_setup_gmail` with `{label, user}`. The user creates their own Google OAuth client (Desktop type) and runs `bridgehead auth gmail` in a terminal to complete consent.
 3. Relay the returned instructions verbatim either way.
 
+### Slack
+1. Call `bridge_source_setup_slack` (optionally with `{team: "workspace-name"}`). It returns the one-time Slack app setup: create an app, enable Socket Mode (app-level token, `connections:write`), add bot scopes (`app_mentions:read`, `channels:history`, `channels:read`, `users:read`), subscribe to bot events (`app_mention`, `message.channels`), install, invite the bot to channels.
+2. Relay those steps verbatim, then have the user run `bridgehead auth slack` in a terminal — both tokens go in via hidden prompts, never through this conversation.
+3. Slack routes match `app_mention` by default (any channel the bot is in); matching plain `message` events requires naming channels. Bot-posted messages are skipped by default.
+
 ## 3. Create the route
 
 Call `bridge_route_add`. Examples:

@@ -90,6 +90,71 @@ describe("matchRoutes — github", () => {
   });
 });
 
+describe("matchRoutes — slack", () => {
+  function slackEvent(
+    overrides: Partial<BridgeEvent> & { payload?: Record<string, unknown> },
+  ): BridgeEvent {
+    return {
+      source: "slack",
+      kind: "app_mention",
+      deliveryId: "Ev1",
+      occurredAt: "t",
+      summary: "s",
+      payload: {
+        channel: "C123",
+        channelName: "dev",
+        user: "U1",
+        userName: "glenn",
+        text: "help me deploy",
+      },
+      ...overrides,
+    };
+  }
+
+  it("matches app_mention routes across channels by default", () => {
+    const r = route({ source: "slack", match: { events: ["app_mention"] } });
+    expect(matchRoutes([r], slackEvent({}))).toHaveLength(1);
+    expect(matchRoutes([r], slackEvent({ kind: "message" }))).toHaveLength(0);
+  });
+
+  it("matches channels by id or #name, case-insensitively", () => {
+    const r = route({ source: "slack", match: { channels: ["#Dev"], events: ["message"] } });
+    expect(matchRoutes([r], slackEvent({ kind: "message" }))).toHaveLength(1);
+    expect(
+      matchRoutes(
+        [r],
+        slackEvent({ kind: "message", payload: { channel: "C123", channelName: "ops" } }),
+      ),
+    ).toHaveLength(0);
+    const byId = route({ source: "slack", match: { channels: ["C123"], events: ["message"] } });
+    expect(matchRoutes([byId], slackEvent({ kind: "message" }))).toHaveLength(1);
+  });
+
+  it("matches message subtypes via the bare event name", () => {
+    const r = route({ source: "slack", match: { channels: ["dev"], events: ["message"] } });
+    expect(matchRoutes([r], slackEvent({ kind: "message.channel_topic" }))).toHaveLength(1);
+  });
+
+  it("applies fromUser (id or name substring) and textContains", () => {
+    const r = route({
+      source: "slack",
+      match: { events: ["app_mention"], fromUser: "glenn", textContains: "deploy" },
+    });
+    expect(matchRoutes([r], slackEvent({}))).toHaveLength(1);
+    expect(
+      matchRoutes([r], slackEvent({ payload: { channel: "C1", userName: "sam", text: "deploy" } })),
+    ).toHaveLength(0);
+    expect(
+      matchRoutes(
+        [r],
+        slackEvent({ payload: { channel: "C1", userName: "glenn", text: "lunch?" } }),
+      ),
+    ).toHaveLength(0);
+    const byId = route({ source: "slack", match: { events: ["app_mention"], fromUser: "U1" } });
+    expect(matchRoutes([byId], slackEvent({}))).toHaveLength(1);
+  });
+});
+
 describe("matchRoutes — gmail", () => {
   const gmailRoute = route({
     id: "g-1",

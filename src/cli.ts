@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { authGmail } from "./cli/auth-gmail.js";
 import { authImap } from "./cli/auth-imap.js";
+import { authSlack } from "./cli/auth-slack.js";
 import { installService, uninstallService } from "./cli/service.js";
 import { apiFetch, readDaemonState } from "./client.js";
 import { loadConfig } from "./config.js";
@@ -134,6 +135,15 @@ auth
   )
   .action(async (opts: { source?: string; password?: string }) => {
     await authImap(createLogger(), opts);
+  });
+auth
+  .command("slack")
+  .description("Store the Socket Mode tokens for a slack source (app-level xapp- and bot xoxb-)")
+  .option("--source <id>", "slack source id (from bridge_source_setup_slack)")
+  .option("--app-token <token>", "app-level token (prefer the hidden prompt)")
+  .option("--bot-token <token>", "bot token (prefer the hidden prompt)")
+  .action(async (opts: { source?: string; appToken?: string; botToken?: string }) => {
+    await authSlack(createLogger(), opts);
   });
 
 const service = program.command("service").description("Run the daemon as a login service");

@@ -1,5 +1,5 @@
 import type { BridgeEvent } from "./event.js";
-import type { GithubMatch, GmailMatch, Route } from "./route.js";
+import type { GithubMatch, GmailMatch, Route, SlackMatch } from "./route.js";
 
 /** Returns the enabled routes whose match rules accept this event. */
 export function matchRoutes(routes: Route[], event: BridgeEvent): Route[] {
@@ -14,9 +14,47 @@ function matches(route: Route, event: BridgeEvent): boolean {
       return matchGithub(route.match as GithubMatch, event);
     case "gmail":
       return matchGmail(route.match as GmailMatch, event);
+    case "slack":
+      return matchSlack(route.match as SlackMatch, event);
     default:
       return false;
   }
+}
+
+function matchSlack(match: SlackMatch, event: BridgeEvent): boolean {
+  // route "message" matches kind "message.channel_topic"; exact kinds match exactly.
+  const kindMatches = match.events.some((e) => event.kind === e || event.kind.startsWith(`${e}.`));
+  if (!kindMatches) return false;
+
+  if (match.channels && match.channels.length > 0) {
+    const channelId = str(event.payload.channel);
+    const channelName = str(event.payload.channelName);
+    const ok = match.channels.some((wanted) => {
+      const bare = wanted.replace(/^#/, "");
+      return (
+        bare.localeCompare(channelId, undefined, { sensitivity: "accent" }) === 0 ||
+        bare.localeCompare(channelName, undefined, { sensitivity: "accent" }) === 0
+      );
+    });
+    if (!ok) return false;
+  }
+
+  if (match.fromUser) {
+    const user = str(event.payload.user);
+    const userName = str(event.payload.userName).toLowerCase();
+    const wanted = match.fromUser;
+    if (user !== wanted && !userName.includes(wanted.toLowerCase())) return false;
+  }
+
+  if (match.textContains) {
+    const text = str(event.payload.text).toLowerCase();
+    if (!text.includes(match.textContains.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function str(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function matchGithub(match: GithubMatch, event: BridgeEvent): boolean {

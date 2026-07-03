@@ -1,7 +1,7 @@
 {
   "name": "bridgehead",
   "version": "0.1.0",
-  "description": "Break the loop — GitHub and Gmail events pushed straight into your local Codex threads, no polling.",
+  "description": "Break the loop — GitHub, Gmail, and Slack events pushed straight into your local Codex threads, no polling.",
   "keywords": [
     "codex",
     "webhooks",
@@ -45,6 +45,8 @@
     "@napi-rs/keyring": "^1.3.0",
     "@octokit/webhooks-methods": "^6.0.0",
     "@openai/codex-sdk": "^0.142.5",
+    "@slack/socket-mode": "^2.0.7",
+    "@slack/web-api": "^7.18.0",
     "better-sqlite3": "^12.11.1",
     "commander": "^14.0.0",
     "google-auth-library": "^10.9.0",

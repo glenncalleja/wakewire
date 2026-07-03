@@ -48,6 +48,20 @@ enabling `workspace-write` on anything.
   `~/.bridgehead/secrets.json` (0600) with a loud warning in the logs.
 - Secrets are never logged and never returned by the API after setup time.
 
+## Slack specifics
+
+- Socket Mode means no inbound listener at all — the daemon dials out with the
+  app-level token. Authenticity comes from that token; there is no signature to
+  verify because there is no public endpoint to spoof.
+- Message content is written by workspace members (and, if you enable
+  `includeBotMessages`, by other integrations) — treat it exactly like email:
+  untrusted. Slack routes default to read-only; opt into `workspace-write` only
+  for routes scoped to channels whose members you'd let edit your working tree,
+  because that is effectively what it grants.
+- Watch-everything is rejected: `message` routes must name channels;
+  mention-only routes are bounded by where the bot has been invited. Bot-posted
+  messages are skipped by default so two integrations can't ping-pong.
+
 ## Blast-radius defaults
 
 - Sandbox: `read-only` unless a github route explicitly opts into

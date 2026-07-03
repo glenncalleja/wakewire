@@ -249,6 +249,39 @@ export function createApi(ctx: ApiContext): Hono {
     return c.json({ sourceId: record.id, authKind, instructions }, 201);
   });
 
+  app.post("/api/sources/slack/setup", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z
+      .object({
+        team: z.string().min(1).default("default"),
+        includeBotMessages: z.boolean().default(false),
+      })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+    const sourceId = deterministicSourceId("slack", parsed.data.team);
+    const record = ctx.stores.sources.upsert({
+      id: sourceId,
+      kind: "slack",
+      config: { team: parsed.data.team, includeBotMessages: parsed.data.includeBotMessages },
+    });
+    return c.json(
+      {
+        sourceId: record.id,
+        instructions: [
+          "Slack connects over Socket Mode (an outbound WebSocket) — no public URL needed. One-time app setup:",
+          "1. Create a Slack app at https://api.slack.com/apps → 'Create New App' → 'From scratch', in your workspace.",
+          "2. Settings → Socket Mode: enable it. Generate the app-level token with the connections:write scope (starts with xapp-).",
+          "3. Features → OAuth & Permissions → Bot Token Scopes: add app_mentions:read, channels:history, channels:read, users:read (add groups:history/groups:read too for private channels).",
+          "4. Features → Event Subscriptions: enable, and under 'Subscribe to bot events' add app_mention and message.channels (and message.groups for private channels).",
+          "5. Install the app to the workspace (OAuth & Permissions → Install) and copy the Bot User OAuth Token (starts with xoxb-).",
+          `6. In a terminal run: bridgehead auth slack --source ${record.id}  — it prompts for both tokens (hidden input).`,
+          "7. Invite the bot to the channels it should read: /invite @your-app in each channel.",
+        ],
+      },
+      201,
+    );
+  });
+
   app.post("/api/sources/:id/restart", async (c) => {
     const ok = await ctx.sources.restart(c.req.param("id"));
     return ok ? c.json({ ok: true }) : c.json({ error: "source not found" }, 404);
@@ -260,14 +293,17 @@ export function createApi(ctx: ApiContext): Hono {
     if (!record) return c.json({ error: "source not found" }, 404);
     await ctx.sources.remove(id);
     // Best-effort secret cleanup for the well-known names of this source kind.
-    for (const name of record.kind === "github"
-      ? [secretNames.githubWebhookSecret(id)]
-      : [
-          secretNames.gmailClientId(id),
-          secretNames.gmailClientSecret(id),
-          secretNames.gmailRefreshToken(id),
-          secretNames.imapPassword(id),
-        ]) {
+    const secretsByKind: Record<string, string[]> = {
+      github: [secretNames.githubWebhookSecret(id)],
+      gmail: [
+        secretNames.gmailClientId(id),
+        secretNames.gmailClientSecret(id),
+        secretNames.gmailRefreshToken(id),
+        secretNames.imapPassword(id),
+      ],
+      slack: [secretNames.slackAppToken(id), secretNames.slackBotToken(id)],
+    };
+    for (const name of secretsByKind[record.kind] ?? []) {
       ctx.secrets.delete(name);
     }
     return c.json({ ok: true });

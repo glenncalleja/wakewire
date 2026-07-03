@@ -101,7 +101,19 @@ skills, mcp, config-reference).
     exec-adapter prompts passed via stdin (`codex exec ... -`) to dodge argv
     length limits; and `.mcp.json` launching the MCP server with
     `npx -y bridgehead mcp` so the plugin works without a global install.
-13. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
+13. **Slack via Socket Mode (added 2026-07-03).** `@slack/socket-mode` 2.x +
+    `@slack/web-api`: an outbound WebSocket authenticated by an app-level token,
+    so — like the smee relay — no public endpoint. Envelopes are acked
+    immediately (durability lives in the SQLite queue); Slack retries reuse
+    `event_id`, which is our dedup key, so redeliveries collapse naturally. The
+    bot token is only used to resolve channel/user names (cached, best-effort).
+    Guardrails: `message` routes must name channels, mention-only routes may
+    span the bot's channels, bot-authored messages are skipped by default, and
+    slack routes get github-like sandbox rules (default read-only, opt-in
+    write) — see SECURITY.md for the reasoning. Migration 3 rebuilds the routes
+    and sources tables to drop the `kind` CHECK constraints: extensible enums
+    belong in zod at the boundary, not baked into SQLite DDL.
+14. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
     app-server adapter additionally declines any unexpected server→client approval
     request. Unattended operation must never wedge on an interactive prompt — the
     sandbox, not approvals, is the safety boundary (see SECURITY.md).

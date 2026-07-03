@@ -30,10 +30,12 @@ export async function runMcpServer(): Promise<void> {
         "Create a route that delivers matching external events into a Codex thread. " +
         'For GitHub, match is like {"repo":"owner/repo","events":["push"],"branches":["main"]}. ' +
         'For Gmail, match is like {"label":"agent-inbox"} (a label is required). ' +
+        'For Slack, match is like {"events":["app_mention"]} or {"channels":["#dev"],"events":["message"]} ' +
+        "(matching plain messages requires naming channels). " +
         'target.type "this-thread" targets the current conversation — the tool will tell you how to resolve the thread id if it cannot.',
       inputSchema: {
         name: z.string().min(1).describe("Short human name for the route"),
-        source: z.enum(["github", "gmail"]),
+        source: z.enum(["github", "gmail", "slack"]),
         match: z
           .record(z.string(), z.unknown())
           .describe("Source-specific match rules (see tool description)"),
@@ -207,6 +209,28 @@ export async function runMcpServer(): Promise<void> {
       },
     },
     async (args) => call("POST", "/api/sources/github/setup", args),
+  );
+
+  server.registerTool(
+    "bridge_source_setup_slack",
+    {
+      title: "Set up the Slack event source",
+      description:
+        "Register a Slack workspace watch over Socket Mode (outbound WebSocket — no public URL). " +
+        "Returns the one-time Slack app setup steps; the tokens themselves are stored in a " +
+        "terminal via `bridgehead auth slack`, never through this conversation.",
+      inputSchema: {
+        team: z
+          .string()
+          .optional()
+          .describe("Workspace name, informational — used in the source id (default: default)"),
+        includeBotMessages: z
+          .boolean()
+          .optional()
+          .describe("Also deliver messages posted by bots/integrations (default false)"),
+      },
+    },
+    async (args) => call("POST", "/api/sources/slack/setup", args),
   );
 
   server.registerTool(

@@ -6,10 +6,10 @@ export interface SourceContext {
   logger: Logger;
 }
 
-/** Pluggable event producer. v1: github-webhook, gmail-imap. */
+/** Pluggable event producer: github-webhook, gmail-imap, slack-socket-mode. */
 export interface Source {
   readonly id: string;
-  readonly kind: "github" | "gmail";
+  readonly kind: "github" | "gmail" | "slack";
   start(): Promise<void>;
   stop(): Promise<void>;
   /** Small status blob for bridge_status / GET /api/health. */

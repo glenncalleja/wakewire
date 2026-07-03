@@ -66,6 +66,34 @@ describe("RouteInputSchema", () => {
     expect(result.data?.target).toEqual({ type: "new-thread", cwd: "/repos/api", worktree: true });
   });
 
+  it("slack: message routes require channels; mention-only routes do not", () => {
+    const mentionOnly = RouteInputSchema.safeParse({
+      name: "mentions",
+      source: "slack",
+      match: {},
+      target: { type: "thread", threadId: "t-1" },
+    });
+    expect(mentionOnly.success).toBe(true); // events defaults to ["app_mention"]
+
+    const allMessages = RouteInputSchema.safeParse({
+      name: "everything",
+      source: "slack",
+      match: { events: ["message"] },
+      target: { type: "thread", threadId: "t-1" },
+    });
+    expect(allMessages.success).toBe(false);
+    expect(JSON.stringify(allMessages.error?.issues)).toContain("channels");
+
+    const scoped = RouteInputSchema.safeParse({
+      name: "dev messages",
+      source: "slack",
+      match: { channels: ["#dev"], events: ["message"] },
+      target: { type: "thread", threadId: "t-1" },
+      sandbox: "workspace-write",
+    });
+    expect(scoped.success).toBe(true); // slack may opt into workspace-write, like github
+  });
+
   it("rejects unknown target types and missing thread ids", () => {
     expect(
       RouteInputSchema.safeParse({

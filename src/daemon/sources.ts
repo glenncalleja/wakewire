@@ -4,6 +4,7 @@ import type { Logger } from "../logging.js";
 import type { SecretStore } from "../secrets/store.js";
 import { GithubSourceConfigSchema, GithubWebhookSource } from "../sources/github/source.js";
 import { GmailImapSource, GmailSourceConfigSchema } from "../sources/gmail/source.js";
+import { SlackSocketSource, SlackSourceConfigSchema } from "../sources/slack/source.js";
 import type { Source } from "../sources/types.js";
 
 /**
@@ -71,6 +72,9 @@ export class SourceManager {
       if (record.kind === "github") {
         const config = GithubSourceConfigSchema.parse(record.config);
         source = new GithubWebhookSource(id, config, this.secrets, ctx);
+      } else if (record.kind === "slack") {
+        const config = SlackSourceConfigSchema.parse(record.config);
+        source = new SlackSocketSource(id, config, this.secrets, ctx);
       } else {
         const config = GmailSourceConfigSchema.parse(record.config);
         source = new GmailImapSource(id, config, this.secrets, ctx, (state) => {

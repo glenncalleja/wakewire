@@ -13,6 +13,35 @@ export const GithubMatchSchema = z.object({
   branches: z.array(z.string().min(1)).optional(),
 });
 
+export const SlackMatchSchema = z
+  .object({
+    /**
+     * Channel ids (C…) or names (with or without "#"). Required when matching
+     * plain messages — mention-only routes may span all channels the bot is in.
+     */
+    channels: z.array(z.string().min(1)).min(1).optional(),
+    /**
+     * Slack event types: "app_mention" (default), "message",
+     * "message.<subtype>", "reaction_added". Bare "message" matches all subtypes.
+     */
+    events: z.array(z.string().min(1)).min(1).default(["app_mention"]),
+    /** Filter on the sender: user id (U…) or a case-insensitive name substring. */
+    fromUser: z.string().min(1).optional(),
+    /** Case-insensitive substring the message text must contain. */
+    textContains: z.string().min(1).optional(),
+  })
+  .superRefine((match, ctx) => {
+    const wantsMessages = match.events.some((e) => e === "message" || e.startsWith("message."));
+    if (wantsMessages && (!match.channels || match.channels.length === 0)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["channels"],
+        message:
+          'matching "message" events requires naming channels — watching every message everywhere is not allowed',
+      });
+    }
+  });
+
 export const GmailMatchSchema = z.object({
   /**
    * Required: a Gmail label (IMAP mailbox) to watch. Routes that would match
@@ -43,7 +72,7 @@ export const SandboxPolicySchema = z.enum(["read-only", "workspace-write"]);
 export const RouteInputSchema = z
   .object({
     name: z.string().min(1).max(100),
-    source: z.enum(["github", "gmail"]),
+    source: z.enum(["github", "gmail", "slack"]),
     match: z.record(z.string(), z.unknown()),
     target: RouteTargetSchema,
     promptTemplate: z.string().max(4000).optional(),
@@ -53,7 +82,12 @@ export const RouteInputSchema = z
     enabled: z.boolean().default(true),
   })
   .superRefine((route, ctx) => {
-    const matchSchema = route.source === "github" ? GithubMatchSchema : GmailMatchSchema;
+    const matchSchema =
+      route.source === "github"
+        ? GithubMatchSchema
+        : route.source === "gmail"
+          ? GmailMatchSchema
+          : SlackMatchSchema;
     const parsed = matchSchema.safeParse(route.match);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
@@ -71,6 +105,7 @@ export const RouteInputSchema = z
 
 export type GithubMatch = z.infer<typeof GithubMatchSchema>;
 export type GmailMatch = z.infer<typeof GmailMatchSchema>;
+export type SlackMatch = z.infer<typeof SlackMatchSchema>;
 export type RouteTarget = z.infer<typeof RouteTargetSchema>;
 export type SandboxPolicy = z.infer<typeof SandboxPolicySchema>;
 export type RouteInput = z.infer<typeof RouteInputSchema>;
@@ -78,8 +113,8 @@ export type RouteInput = z.infer<typeof RouteInputSchema>;
 export interface Route {
   id: string;
   name: string;
-  source: "github" | "gmail";
-  match: GithubMatch | GmailMatch;
+  source: "github" | "gmail" | "slack";
+  match: GithubMatch | GmailMatch | SlackMatch;
   target: RouteTarget;
   promptTemplate: string | null;
   sandbox: SandboxPolicy;

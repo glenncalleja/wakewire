@@ -1,3 +1,4 @@
+import DatabaseConstructor from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "./db.js";
 import { migrate } from "./migrations.js";
@@ -15,6 +16,57 @@ describe("migrations", () => {
     expect(tables).toEqual(
       expect.arrayContaining(["routes", "deliveries", "sources", "settings", "schema_migrations"]),
     );
+  });
+});
+
+describe("migration 3 upgrade (source-kind CHECK removal)", () => {
+  it("preserves routes, sources, and deliveries across the table rebuild", () => {
+    const db = new DatabaseConstructor(":memory:");
+    migrate(db, 2); // simulate an installation on the v2 schema
+    const stores = createStores(db);
+    const route = stores.routes.create({
+      name: "old route",
+      source: "github",
+      match: { repo: "a/b", events: ["push"] },
+      target: { type: "thread", threadId: "t-1" },
+      sandbox: "read-only",
+      rateLimitPerMinute: 3,
+      enabled: true,
+    });
+    stores.sources.upsert({ id: "src-1", kind: "gmail", config: { label: "x" } });
+    stores.deliveries.enqueue({
+      routeId: route.id,
+      event: {
+        source: "github",
+        kind: "push",
+        deliveryId: "d-1",
+        occurredAt: "t",
+        summary: "s",
+        payload: {},
+      },
+      renderedPrompt: "p",
+    });
+
+    migrate(db); // apply v3 rebuild
+
+    const migrated = createStores(db);
+    expect(migrated.routes.get(route.id)?.rateLimitPerMinute).toBe(3);
+    expect(migrated.sources.get("src-1")?.config.label).toBe("x");
+    expect(migrated.deliveries.list({}).length).toBe(1);
+    // and the rebuilt table accepts the new source kind
+    expect(() =>
+      migrated.sources.upsert({ id: "src-2", kind: "slack", config: { team: "default" } }),
+    ).not.toThrow();
+    expect(() =>
+      migrated.routes.create({
+        name: "slack route",
+        source: "slack",
+        match: { events: ["app_mention"] },
+        target: { type: "thread", threadId: "t-1" },
+        sandbox: "read-only",
+        enabled: true,
+      }),
+    ).not.toThrow();
   });
 });
 

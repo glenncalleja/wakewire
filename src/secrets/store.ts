@@ -112,4 +112,6 @@ export const secretNames = {
   gmailClientSecret: (sourceId: string) => `gmail:${sourceId}:client-secret`,
   gmailRefreshToken: (sourceId: string) => `gmail:${sourceId}:refresh-token`,
   imapPassword: (sourceId: string) => `imap:${sourceId}:password`,
+  slackAppToken: (sourceId: string) => `slack:${sourceId}:app-token`,
+  slackBotToken: (sourceId: string) => `slack:${sourceId}:bot-token`,
 } as const;
