@@ -117,6 +117,20 @@ describe("matchRoutes — slack", () => {
     expect(matchRoutes([r], slackEvent({ kind: "message" }))).toHaveLength(0);
   });
 
+  it("tolerates stored routes whose match lacks events (pre-normalization rows)", () => {
+    const legacySlack = route({ source: "slack", match: {} as never });
+    expect(() => matchRoutes([legacySlack], slackEvent({}))).not.toThrow();
+    expect(matchRoutes([legacySlack], slackEvent({}))).toHaveLength(1); // defaults to app_mention
+
+    const legacyGithub = route({ match: { repo: "acme/api" } as never });
+    expect(() =>
+      matchRoutes([legacyGithub], githubEvent({ payload: { repo: "acme/api", branch: "main" } })),
+    ).not.toThrow();
+    expect(
+      matchRoutes([legacyGithub], githubEvent({ payload: { repo: "acme/api", branch: "main" } })),
+    ).toHaveLength(1); // defaults to push
+  });
+
   it("matches channels by id or #name, case-insensitively", () => {
     const r = route({ source: "slack", match: { channels: ["#Dev"], events: ["message"] } });
     expect(matchRoutes([r], slackEvent({ kind: "message" }))).toHaveLength(1);

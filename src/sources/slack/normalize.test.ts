@@ -45,7 +45,9 @@ describe("slackToBridgeEvent", () => {
     });
     expect(plain?.kind).toBe("message");
     expect(plain?.summary).toContain("@U1");
-    expect(plain?.payload.channelName).toBeUndefined();
+    // unresolved names fall back to raw ids so the default template always renders
+    expect(plain?.payload.channelName).toBe("C1");
+    expect(plain?.payload.userName).toBe("U1");
 
     const subtype = slackToBridgeEvent({
       event: { type: "message", subtype: "channel_topic", channel: "C1", ts: "1.0" },

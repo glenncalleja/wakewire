@@ -32,8 +32,9 @@ interface SlackEnvelope {
  * HTTP endpoint is needed. The bot token (xoxb-…) is only used to resolve
  * channel/user names for summaries and match rules.
  *
- * Events are acked immediately (delivery durability is the queue's job);
- * Slack's retries reuse the same event_id, so redeliveries dedup naturally.
+ * Deliverable events are acked only after they are durably enqueued (see
+ * handleEnvelope); un-acked envelopes are redelivered by Slack with the same
+ * event_id, and dedup collapses them.
  */
 export class SlackSocketSource implements Source {
   readonly kind = "slack" as const;
@@ -123,17 +124,30 @@ export class SlackSocketSource implements Source {
     };
   }
 
+  /**
+   * Ack ordering: events we won't deliver are acked immediately, but
+   * deliverable events are acked only AFTER ctx.emit() returns — emit is
+   * synchronous through route matching and the SQLite enqueue, so an ack
+   * means the event is durably queued. If anything throws (or the process
+   * dies) before that, the envelope stays un-acked and Slack redelivers with
+   * the same event_id, which our dedup collapses. Name resolution happens
+   * inside that window; caches keep it fast, and blowing Slack's ~3s ack
+   * deadline merely causes a redelivery that dedups.
+   */
   private async handleEnvelope(envelope: SlackEnvelope): Promise<void> {
-    // Ack everything first: Slack redelivers unacked envelopes, and our
-    // durability lives in the SQLite queue, not the socket.
-    await envelope.ack();
-    if (envelope.type !== "events_api") return;
+    if (envelope.type !== "events_api") {
+      await envelope.ack();
+      return;
+    }
     const event = envelope.body.event;
     const eventId = envelope.body.event_id;
-    if (!event || !eventId) return;
-
+    if (!event || !eventId) {
+      await envelope.ack();
+      return;
+    }
     if (!this.config.includeBotMessages && isBotEvent(event)) {
       this.skippedBots++;
+      await envelope.ack();
       return;
     }
 
@@ -147,10 +161,14 @@ export class SlackSocketSource implements Source {
       teamId: envelope.body.team_id,
       names,
     });
-    if (!bridgeEvent) return;
+    if (!bridgeEvent) {
+      await envelope.ack();
+      return;
+    }
     this.received++;
     this.lastEventAt = new Date().toISOString();
-    this.ctx.emit(bridgeEvent);
+    this.ctx.emit(bridgeEvent); // synchronous: matches routes and enqueues to SQLite
+    await envelope.ack();
   }
 
   private async resolveChannel(id: string): Promise<string | undefined> {

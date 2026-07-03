@@ -69,6 +69,17 @@ export const RouteTargetSchema = z.discriminatedUnion("type", [
 
 export const SandboxPolicySchema = z.enum(["read-only", "workspace-write"]);
 
+function matchSchemaFor(source: "github" | "gmail" | "slack") {
+  switch (source) {
+    case "github":
+      return GithubMatchSchema;
+    case "gmail":
+      return GmailMatchSchema;
+    default:
+      return SlackMatchSchema;
+  }
+}
+
 export const RouteInputSchema = z
   .object({
     name: z.string().min(1).max(100),
@@ -82,13 +93,7 @@ export const RouteInputSchema = z
     enabled: z.boolean().default(true),
   })
   .superRefine((route, ctx) => {
-    const matchSchema =
-      route.source === "github"
-        ? GithubMatchSchema
-        : route.source === "gmail"
-          ? GmailMatchSchema
-          : SlackMatchSchema;
-    const parsed = matchSchema.safeParse(route.match);
+    const parsed = matchSchemaFor(route.source).safeParse(route.match);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         ctx.addIssue({ code: "custom", path: ["match", ...issue.path], message: issue.message });
@@ -101,6 +106,16 @@ export const RouteInputSchema = z
         message: "gmail routes are forced to read-only sandbox",
       });
     }
+  })
+  .transform((route) => {
+    // Persist the PARSED match so schema defaults (github events: ["push"],
+    // slack events: ["app_mention"]) reach the router — storing the raw input
+    // dropped them and made the router throw on default routes.
+    const parsed = matchSchemaFor(route.source).safeParse(route.match);
+    return {
+      ...route,
+      match: (parsed.success ? parsed.data : route.match) as GithubMatch | GmailMatch | SlackMatch,
+    };
   });
 
 export type GithubMatch = z.infer<typeof GithubMatchSchema>;

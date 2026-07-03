@@ -13,6 +13,26 @@ describe("RouteInputSchema", () => {
     expect(route.enabled).toBe(true);
   });
 
+  it("persists match defaults into the parsed route (regression: default routes lost events)", () => {
+    // github: events defaults to ["push"]
+    const github = RouteInputSchema.parse({
+      name: "gh",
+      source: "github",
+      match: { repo: "acme/api" },
+      target: { type: "thread", threadId: "t-1" },
+    });
+    expect(github.match).toEqual({ repo: "acme/api", events: ["push"] });
+
+    // slack: events defaults to ["app_mention"]
+    const slack = RouteInputSchema.parse({
+      name: "mentions",
+      source: "slack",
+      match: {},
+      target: { type: "thread", threadId: "t-1" },
+    });
+    expect(slack.match).toEqual({ events: ["app_mention"] });
+  });
+
   it("rejects malformed repo matchers", () => {
     const result = RouteInputSchema.safeParse({
       name: "bad",

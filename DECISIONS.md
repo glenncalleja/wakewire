@@ -103,10 +103,15 @@ skills, mcp, config-reference).
     `npx -y bridgehead mcp` so the plugin works without a global install.
 13. **Slack via Socket Mode (added 2026-07-03).** `@slack/socket-mode` 2.x +
     `@slack/web-api`: an outbound WebSocket authenticated by an app-level token,
-    so — like the smee relay — no public endpoint. Envelopes are acked
-    immediately (durability lives in the SQLite queue); Slack retries reuse
-    `event_id`, which is our dedup key, so redeliveries collapse naturally. The
-    bot token is only used to resolve channel/user names (cached, best-effort).
+    so — like the smee relay — no public endpoint. Deliverable envelopes are
+    acked only after the event is synchronously enqueued to SQLite ("ack =
+    durably queued"); anything that fails before that stays un-acked, Slack
+    redelivers with the same `event_id`, and dedup collapses the retry. Events
+    we deliberately skip (bot chatter, non-events envelopes) are acked
+    immediately. Name resolution runs inside the ack window — cached, and an
+    occasional blown ~3s deadline just causes a deduped redelivery. The
+    bot token is only used to resolve channel/user names (cached, best-effort;
+    unresolved names fall back to raw ids so templates always render).
     Guardrails: `message` routes must name channels, mention-only routes may
     span the bot's channels, bot-authored messages are skipped by default, and
     slack routes get github-like sandbox rules (default read-only, opt-in

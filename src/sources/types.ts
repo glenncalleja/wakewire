@@ -2,6 +2,11 @@ import type { BridgeEvent } from "../core/event.js";
 import type { Logger } from "../logging.js";
 
 export interface SourceContext {
+  /**
+   * Contract: emit is SYNCHRONOUS through route matching and the SQLite
+   * enqueue. Sources rely on this — e.g. the Slack source acks its envelope
+   * only after emit returns, treating "emit returned" as "durably queued".
+   */
   emit(event: BridgeEvent): void;
   logger: Logger;
 }

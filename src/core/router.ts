@@ -23,7 +23,9 @@ function matches(route: Route, event: BridgeEvent): boolean {
 
 function matchSlack(match: SlackMatch, event: BridgeEvent): boolean {
   // route "message" matches kind "message.channel_topic"; exact kinds match exactly.
-  const kindMatches = match.events.some((e) => event.kind === e || event.kind.startsWith(`${e}.`));
+  // Defensive default: rows stored before match normalization may lack events.
+  const events = match.events ?? ["app_mention"];
+  const kindMatches = events.some((e) => event.kind === e || event.kind.startsWith(`${e}.`));
   if (!kindMatches) return false;
 
   if (match.channels && match.channels.length > 0) {
@@ -63,7 +65,9 @@ function matchGithub(match: GithubMatch, event: BridgeEvent): boolean {
 
   // route "push" matches kind "push"; route "pull_request" matches "pull_request.opened";
   // route "pull_request.opened" matches only that action.
-  const kindMatches = match.events.some((e) => event.kind === e || event.kind.startsWith(`${e}.`));
+  // Defensive default: rows stored before match normalization may lack events.
+  const events = match.events ?? ["push"];
+  const kindMatches = events.some((e) => event.kind === e || event.kind.startsWith(`${e}.`));
   if (!kindMatches) return false;
 
   if (match.branches && match.branches.length > 0 && event.kind === "push") {

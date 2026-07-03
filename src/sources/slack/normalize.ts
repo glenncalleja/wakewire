@@ -29,11 +29,14 @@ export function slackToBridgeEvent(args: {
   const userLabel = names.userName ?? (user || "unknown");
   const channelLabel = names.channelName ?? (channel || "unknown");
 
+  // userName/channelName are ALWAYS present (falling back to the raw ids):
+  // the default prompt template interpolates them, and a missing whitelisted
+  // field is a hard template error that would fail every delivery.
   const base = {
     channel,
-    ...(names.channelName ? { channelName: names.channelName } : {}),
+    channelName: channelLabel,
     user,
-    ...(names.userName ? { userName: names.userName } : {}),
+    userName: userLabel,
     eventType: kind,
     ...(teamId ? { team: teamId } : {}),
   };
