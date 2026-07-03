@@ -12,7 +12,6 @@ bridge_source_setup_webhook {
   "name": "clickup",
   "verification": { "kind": "hmac-sha256", "header": "x-signature" },
   "mapping": {
-    "deliveryId": "webhook_id",
     "kind": "event",
     "summary": "{{kind}} on task {{taskId}}",
     "fields": {
@@ -25,10 +24,12 @@ bridge_source_setup_webhook {
 }
 ```
 
-Note: `deliveryId: "webhook_id"` is per-webhook, not per-event — if you see
-`skipped-duplicate` on distinct events, re-run setup without `deliveryId` (body
-hash) or capture an event and pick a better id path. ClickUp payloads vary a
-lot by event type; capture mode is your friend here.
+No `deliveryId` mapping on purpose: the body's `webhook_id` is the webhook's
+own id (identical on every event — mapping it would dedup everything after the
+first delivery), and ClickUp's recommended idempotency key is the composite
+`webhook_id:history_items[0].id`, which the body-hash fallback approximates
+well since history item ids make each body unique. ClickUp payloads vary a lot
+by event type; capture mode is your friend here.
 
 ## 2. Register the webhook (ClickUp API)
 

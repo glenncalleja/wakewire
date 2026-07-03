@@ -147,12 +147,13 @@ export class GithubWebhookSource implements Source {
     }
     const event = trimGithubEvent({ eventName, deliveryId, payload });
     if (!event) {
-      return { status: 202, message: "event has no repository — ignored" };
+      return { status: 200, message: "event has no repository — ignored" };
     }
     this.received++;
     this.lastEventAt = new Date().toISOString();
     this.ctx.emit(event);
-    return { status: 202, message: "accepted" };
+    // Exactly 200: strictest common denominator across webhook providers.
+    return { status: 200, message: "accepted" };
   }
 }
 

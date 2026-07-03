@@ -86,6 +86,27 @@ describe("mapWebhookEvent", () => {
     expect(event.payload).toEqual({ provider: "grafana" });
   });
 
+  it("prefers the header delivery id over body paths and hash (Linear-Delivery style)", () => {
+    const event = mapWebhookEvent({
+      provider: "linear",
+      mapping: { deliveryIdHeader: "linear-delivery", deliveryId: "webhookId", fields: {} },
+      body: { webhookId: "wh-constant" },
+      rawBody: '{"webhookId":"wh-constant"}',
+      headerDeliveryId: "uuid-per-delivery-1",
+    });
+    expect(event.deliveryId).toBe("uuid-per-delivery-1");
+
+    // header configured but absent on this request → falls back to body path
+    const fallback = mapWebhookEvent({
+      provider: "linear",
+      mapping: { deliveryIdHeader: "linear-delivery", deliveryId: "id", fields: {} },
+      body: { id: "evt-9" },
+      rawBody: "{}",
+      headerDeliveryId: undefined,
+    });
+    expect(fallback.deliveryId).toBe("evt-9");
+  });
+
   it("hash delivery ids are stable for identical bodies (dedup) and differ otherwise", () => {
     const a = mapWebhookEvent({ provider: "p", mapping: undefined, body: {}, rawBody: "{'a':1}" });
     const b = mapWebhookEvent({ provider: "p", mapping: undefined, body: {}, rawBody: "{'a':1}" });

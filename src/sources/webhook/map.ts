@@ -10,7 +10,13 @@ const FIELD_VALUE_LIMIT = 2_000;
  * doubles as the trim whitelist: only mapped fields ever reach the model.
  */
 export const WebhookMappingSchema = z.object({
-  /** Path to a unique event id. Fallback: hash of the raw body. */
+  /**
+   * HTTP header carrying a unique delivery id (e.g. Linear-Delivery).
+   * Checked before deliveryId. Headers are relayed by smee, so this works in
+   * both transport modes.
+   */
+  deliveryIdHeader: z.string().min(1).optional(),
+  /** Path to a unique event id in the body. Fallback: hash of the raw body. */
   deliveryId: z.string().min(1).optional(),
   /** Path to an event type/name. Fallback: "event". */
   kind: z.string().min(1).optional(),
@@ -31,10 +37,13 @@ export function mapWebhookEvent(args: {
   mapping: WebhookMapping | undefined;
   body: Record<string, unknown>;
   rawBody: string;
+  /** Value of mapping.deliveryIdHeader, resolved by the source. */
+  headerDeliveryId?: string | undefined;
 }): BridgeEvent {
-  const { provider, mapping, body, rawBody } = args;
+  const { provider, mapping, body, rawBody, headerDeliveryId } = args;
   const kind = scalarAt(body, mapping?.kind) || "event";
   const deliveryId =
+    (headerDeliveryId ? truncate(headerDeliveryId, 200) : "") ||
     scalarAt(body, mapping?.deliveryId) ||
     `hash-${crypto.createHash("sha256").update(rawBody).digest("hex").slice(0, 32)}`;
   const occurredAt =

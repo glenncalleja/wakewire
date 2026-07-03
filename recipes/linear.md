@@ -1,8 +1,10 @@
 # Linear
 
 Linear signs webhooks with HMAC-SHA256 (hex) of the raw body in the
-`linear-signature` header. You choose the secret when creating the webhook, so
-use the one bridgehead generates.
+`linear-signature` header. **Linear generates the signing secret itself** — you
+copy it from the webhook's detail page after creating the webhook. Each
+delivery also carries a `Linear-Delivery` header, "a UUID (v4) that uniquely
+identifies this payload" — the correct dedup key.
 
 ## 1. Source
 
@@ -11,7 +13,7 @@ bridge_source_setup_webhook {
   "name": "linear",
   "verification": { "kind": "hmac-sha256", "header": "linear-signature" },
   "mapping": {
-    "deliveryId": "webhookId",
+    "deliveryIdHeader": "linear-delivery",
     "kind": "type",
     "occurredAt": "createdAt",
     "summary": "{{action}} {{kind}}: {{title}}",
@@ -28,13 +30,24 @@ bridge_source_setup_webhook {
 }
 ```
 
-(As with ClickUp, capture an event first if you want to refine the id path —
-`webhookId` dedups per delivery attempt, which is usually what you want.)
+Do NOT map `deliveryId` to the body's `webhookId` — that is the webhook's own
+id, identical on every event, and would dedup everything after the first
+delivery into `skipped-duplicate`.
 
 ## 2. Webhook
 
-Linear → Settings → API → Webhooks → New webhook: paste the `webhookUrl` and
-the `secret` from step 1, pick the resource types (Issues, Comments, …).
+Linear → Settings → API → Webhooks → New webhook: paste the `webhookUrl` from
+step 1 and pick the resource types (Issues, Comments, …). Then open the
+webhook's detail page, copy **Linear's signing secret**, and store it:
+
+```bash
+bridgehead auth webhook --source webhook-linear
+```
+
+(Ignore the secret bridgehead generated at setup — Linear issues its own.)
+
+Note: Linear requires an exact HTTP 200 response within 5 seconds; bridgehead's
+listen-mode ingress returns exactly that.
 
 ## 3. Route examples
 

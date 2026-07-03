@@ -175,10 +175,15 @@ export class WebhookIngestSource implements Source {
       mapping: this.config.mapping,
       body,
       rawBody,
+      headerDeliveryId: this.config.mapping?.deliveryIdHeader
+        ? getHeader(this.config.mapping.deliveryIdHeader)
+        : undefined,
     });
     this.received++;
     this.lastEventAt = new Date().toISOString();
     this.ctx.emit(event);
-    return { status: 202, message: "accepted" };
+    // Exactly 200: some providers (Linear) treat any other status — even 202 —
+    // as a failure, retry, and eventually disable the webhook.
+    return { status: 200, message: "accepted" };
   }
 }
