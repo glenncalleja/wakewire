@@ -30,6 +30,8 @@ export class JsonRpcChild {
   private exited = false;
 
   onNotification: ((method: string, params: unknown) => void) | null = null;
+  /** Invoked once when the connection dies, so callers can fail long-lived waits. */
+  onClose: ((err: Error) => void) | null = null;
   /** Incoming server->client requests (e.g. approval prompts). Return the result to send. */
   onRequest:
     | ((method: string, params: unknown) => { result?: unknown; errorMessage?: string })
@@ -57,11 +59,15 @@ export class JsonRpcChild {
     });
     child.on("error", (err) => {
       this.exited = true;
-      this.failAll(err instanceof Error ? err : new Error(String(err)));
+      const e = err instanceof Error ? err : new Error(String(err));
+      this.failAll(e);
+      this.onClose?.(e);
     });
     child.on("close", (code) => {
       this.exited = true;
-      this.failAll(new Error(`app-server process exited with code ${code}`));
+      const e = new Error(`app-server process exited with code ${code}`);
+      this.failAll(e);
+      this.onClose?.(e);
     });
   }
 

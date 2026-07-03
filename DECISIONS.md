@@ -49,6 +49,17 @@ skills, mcp, config-reference).
    `codex-app-server` (raw JSON-RPC, JSONL over stdio). `codex-exec` is the third,
    plan-mandated fallback. All three implement `AgentAdapter`; selection via the
    `sink.adapter` setting.
+3a. **codex-app-server adapter, completion-blocking (2026-07-04).** Originally
+   returned on turn-accept (fire-and-forget); now it registers a completion
+   waiter keyed by threadId, sends `turn/start`, and awaits the `turn/completed`
+   notification before returning — matching the SDK/exec adapters so the queue's
+   per-thread FIFO stays clean, while keeping the BusyError guard the others
+   lack. `finalResponse` is accumulated from `item/completed` agentMessage events
+   (the `turn/completed` payload usually carries only a "summary" items view).
+   Connection death rejects in-flight waiters (UnreachableError → queue retries).
+   Live-verified on codex-cli 0.142.0 (spawn mode): block-to-completion,
+   finalResponse extraction, and BusyError-on-concurrent-turn all confirmed.
+   Still unverified: proxy mode (needs the desktop app-server socket present).
 3. **Live-refresh behavior (M1 observation).** Officially undocumented. Smoke-tested
    on 2026-07-03 against codex-cli 0.142.0 (ChatGPT auth): injecting via the daemon's
    `/api/inject` with the default SDK adapter ran the turn to completion
