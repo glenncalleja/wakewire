@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { coerceTimestamp, mapWebhookEvent, valueAt } from "./map.js";
+import { coerceTimestamp, mapWebhookEvent, valueAt, WebhookMappingSchema } from "./map.js";
+
+describe("WebhookMappingSchema", () => {
+  it("preserves every documented mapping key (regression: a drifted MCP copy silently dropped deliveryIdHeader)", () => {
+    const input = {
+      deliveryIdHeader: "linear-delivery",
+      deliveryId: "data.id",
+      kind: "type",
+      occurredAt: "createdAt",
+      summary: "{{action}}: {{title}}",
+      fields: { action: "action", title: "data.title" },
+    };
+    // Exact round-trip: if zod strips any key, the tool/API contract has drifted.
+    expect(WebhookMappingSchema.parse(input)).toEqual(input);
+  });
+});
 
 describe("valueAt", () => {
   const obj = { a: { b: [{ c: "deep" }, { c: "deeper" }] }, top: 5 };

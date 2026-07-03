@@ -9,25 +9,45 @@ const FIELD_VALUE_LIMIT = 2_000;
  * array segments) and a summary template over the mapped fields. The mapping
  * doubles as the trim whitelist: only mapped fields ever reach the model.
  */
+/**
+ * Single source of truth for the mapping shape: the daemon API and the MCP
+ * tool both use THIS object. Never redeclare it — zod strips unknown keys, so
+ * a drifted copy silently drops fields (it happened with deliveryIdHeader).
+ */
 export const WebhookMappingSchema = z.object({
-  /**
-   * HTTP header carrying a unique delivery id (e.g. Linear-Delivery).
-   * Checked before deliveryId. Headers are relayed by smee, so this works in
-   * both transport modes.
-   */
-  deliveryIdHeader: z.string().min(1).optional(),
-  /** Path to a unique event id in the body. Fallback: hash of the raw body. */
-  deliveryId: z.string().min(1).optional(),
-  /** Path to an event type/name. Fallback: "event". */
-  kind: z.string().min(1).optional(),
-  /** Path to a timestamp (ISO 8601, epoch seconds, or epoch millis). Fallback: arrival time. */
-  occurredAt: z.string().min(1).optional(),
-  /** One-line summary template over mapped field aliases, e.g. "{{level}}: {{title}}". */
-  summary: z.string().max(500).optional(),
-  /** alias → dot.path extractions. THIS is the payload the model will see. */
+  deliveryIdHeader: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "HTTP header carrying a unique delivery id (e.g. linear-delivery). Checked before deliveryId; smee relays headers, so this works in both transport modes.",
+    ),
+  deliveryId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("dot.path to a unique event id in the body. Fallback: hash of the raw body."),
+  kind: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('dot.path to the event type/name. Fallback: "event".'),
+  occurredAt: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "dot.path to a timestamp (ISO 8601, epoch seconds, or epoch millis). Fallback: arrival time.",
+    ),
+  summary: z
+    .string()
+    .max(500)
+    .optional()
+    .describe('One-line summary template over mapped aliases, e.g. "{{level}}: {{title}}".'),
   fields: z
     .record(z.string().regex(/^\w+$/, "aliases must be word characters"), z.string().min(1))
-    .default({}),
+    .default({})
+    .describe("alias → dot.path extractions. ONLY these fields reach the model."),
 });
 
 export type WebhookMapping = z.infer<typeof WebhookMappingSchema>;

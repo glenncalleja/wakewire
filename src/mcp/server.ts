@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { apiFetch, DaemonNotRunningError } from "../client.js";
+import { WebhookMappingSchema } from "../sources/webhook/map.js";
+import { WebhookVerificationSchema } from "../sources/webhook/verify.js";
 import { VERSION } from "../version.js";
 
 /**
@@ -231,30 +233,12 @@ export async function runMcpServer(): Promise<void> {
           .regex(/^[a-z0-9][a-z0-9_-]*$/i)
           .describe('Provider label, e.g. "sentry" — used as match.provider in routes'),
         mode: z.enum(["smee", "listen"]).optional().describe("smee (default) or direct listen"),
-        verification: z
-          .object({
-            kind: z.enum(["hmac-sha256", "secret-header"]),
-            header: z.string().min(1).describe("Header name carrying the signature/secret"),
-            prefix: z.string().optional().describe('hmac only: literal prefix, e.g. "sha256="'),
-            encoding: z.enum(["hex", "base64"]).optional().describe("hmac only, default hex"),
-          })
-          .describe("How the provider signs requests"),
-        mapping: z
-          .object({
-            deliveryId: z.string().optional().describe("dot.path to a unique event id"),
-            kind: z.string().optional().describe("dot.path to the event type"),
-            occurredAt: z.string().optional().describe("dot.path to a timestamp"),
-            summary: z
-              .string()
-              .optional()
-              .describe('template over mapped aliases, e.g. "{{level}}: {{title}}"'),
-            fields: z
-              .record(z.string(), z.string())
-              .optional()
-              .describe("alias → dot.path; ONLY these fields reach the model"),
-          })
-          .optional()
-          .describe("Omit on first setup to use capture mode"),
+        // The canonical schemas — never redeclare these here: zod strips
+        // unknown keys, so a drifted copy silently drops tool arguments.
+        verification: WebhookVerificationSchema.describe("How the provider signs requests"),
+        mapping: WebhookMappingSchema.optional().describe(
+          "Omit on first setup to use capture mode",
+        ),
         capture: z
           .number()
           .int()
