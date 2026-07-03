@@ -11,6 +11,9 @@ import { secretNames } from "../secrets/store.js";
 import type { AgentAdapter } from "../sinks/types.js";
 import { createSmeeChannel, GithubWebhookSource } from "../sources/github/source.js";
 import { GmailSourceConfigSchema } from "../sources/gmail/source.js";
+import { WebhookMappingSchema } from "../sources/webhook/map.js";
+import { WebhookIngestSource } from "../sources/webhook/source.js";
+import { WebhookVerificationSchema } from "../sources/webhook/verify.js";
 import { VERSION } from "../version.js";
 import type { SourceManager } from "./sources.js";
 
@@ -249,6 +252,108 @@ export function createApi(ctx: ApiContext): Hono {
     return c.json({ sourceId: record.id, authKind, instructions }, 201);
   });
 
+  app.post("/api/sources/webhook/setup", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z
+      .object({
+        name: z
+          .string()
+          .min(1)
+          .max(40)
+          .regex(/^[a-z0-9][a-z0-9_-]*$/i),
+        mode: z.enum(["smee", "listen"]).default("smee"),
+        verification: WebhookVerificationSchema,
+        mapping: WebhookMappingSchema.optional(),
+        /** How many upcoming raw payloads to capture for mapping authoring. */
+        capture: z.number().int().min(0).max(10).optional(),
+        rotateSecret: z.boolean().default(false),
+      })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+    const input = parsed.data;
+    const sourceId = deterministicSourceId("webhook", input.name);
+    const existing = ctx.stores.sources.get(sourceId);
+
+    let smeeUrl: string | undefined;
+    if (input.mode === "smee") {
+      const existingUrl = existing?.config.smeeUrl;
+      if (typeof existingUrl === "string" && existingUrl.length > 0) {
+        smeeUrl = existingUrl;
+      } else {
+        try {
+          smeeUrl = await createSmeeChannel();
+        } catch (err) {
+          return c.json(
+            {
+              error: `could not create smee.io channel: ${err instanceof Error ? err.message : err}`,
+            },
+            502,
+          );
+        }
+      }
+    }
+
+    // Keep the existing secret on re-setup (mapping iterations must not break
+    // the provider config); rotate only on request or first creation.
+    let secret: string | null = null;
+    if (!existing || input.rotateSecret || !ctx.secrets.get(secretNames.webhookSecret(sourceId))) {
+      secret = crypto.randomBytes(24).toString("hex");
+      ctx.secrets.set(secretNames.webhookSecret(sourceId), secret);
+    }
+
+    const config = {
+      name: input.name,
+      mode: input.mode,
+      ...(smeeUrl ? { smeeUrl } : {}),
+      verification: input.verification,
+      ...(input.mapping
+        ? { mapping: input.mapping }
+        : existing?.config.mapping
+          ? { mapping: existing.config.mapping }
+          : {}),
+      captureRemaining:
+        input.capture ?? (existing ? Number(existing.config.captureRemaining ?? 0) : 3),
+    };
+    const record = ctx.stores.sources.upsert({ id: sourceId, kind: "webhook", config });
+    await ctx.sources.restart(record.id);
+
+    const payloadUrl = smeeUrl ?? `http://127.0.0.1:<your-tunnel>/ingress/webhook/${record.id}`;
+    const verificationHint =
+      input.verification.kind === "hmac-sha256"
+        ? `HMAC-SHA256 of the raw body, ${input.verification.encoding}-encoded${input.verification.prefix ? `, prefixed "${input.verification.prefix}"` : ""}, in the "${input.verification.header}" header`
+        : `the shared secret sent verbatim in the "${input.verification.header}" header`;
+    return c.json(
+      {
+        sourceId: record.id,
+        provider: input.name,
+        webhookUrl: payloadUrl,
+        secret,
+        captureRemaining: config.captureRemaining,
+        instructions: [
+          `1. Point ${input.name}'s webhook at: ${payloadUrl}`,
+          secret
+            ? `2. Configure its signing secret: ${secret}`
+            : "2. Signing secret unchanged (pass rotateSecret to mint a new one). If the provider issues its own secret, store it with: bridgehead auth webhook --source " +
+              record.id,
+          `3. Signature expected: ${verificationHint}.`,
+          config.captureRemaining > 0
+            ? `4. The next ${config.captureRemaining} event(s) will be captured raw. Send a test event, inspect it with bridge_source_captures, then re-run this setup with a mapping.`
+            : "4. Mapping is set — events flow through it. Re-run setup with a new mapping to change it.",
+        ],
+      },
+      201,
+    );
+  });
+
+  app.get("/api/sources/:id/captures", (c) => {
+    const id = c.req.param("id");
+    if (!ctx.stores.sources.get(id)) return c.json({ error: "source not found" }, 404);
+    const limit = Number(c.req.query("limit") ?? "5");
+    return c.json({
+      captures: ctx.stores.captures.list(id, Number.isFinite(limit) ? limit : 5),
+    });
+  });
+
   app.post("/api/sources/slack/setup", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = z
@@ -302,10 +407,12 @@ export function createApi(ctx: ApiContext): Hono {
         secretNames.imapPassword(id),
       ],
       slack: [secretNames.slackAppToken(id), secretNames.slackBotToken(id)],
+      webhook: [secretNames.webhookSecret(id)],
     };
     for (const name of secretsByKind[record.kind] ?? []) {
       ctx.secrets.delete(name);
     }
+    ctx.stores.captures.removeForSource(id);
     return c.json({ ok: true });
   });
 
@@ -332,6 +439,19 @@ export function createApi(ctx: ApiContext): Hono {
   });
 
   // --- webhook ingress (listen-mode github sources; signature-authenticated) ---
+
+  app.post("/ingress/webhook/:sourceId", async (c) => {
+    const source = ctx.sources.get(c.req.param("sourceId"));
+    if (!source || !(source instanceof WebhookIngestSource)) {
+      return c.json({ error: "unknown source" }, 404);
+    }
+    const rawBody = await c.req.text();
+    const result = await source.handleWebhook({
+      getHeader: (name) => c.req.header(name),
+      rawBody,
+    });
+    return c.json({ message: result.message }, result.status as 200);
+  });
 
   app.post("/ingress/github/:sourceId", async (c) => {
     const source = ctx.sources.get(c.req.param("sourceId"));

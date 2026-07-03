@@ -114,4 +114,5 @@ export const secretNames = {
   imapPassword: (sourceId: string) => `imap:${sourceId}:password`,
   slackAppToken: (sourceId: string) => `slack:${sourceId}:app-token`,
   slackBotToken: (sourceId: string) => `slack:${sourceId}:bot-token`,
+  webhookSecret: (sourceId: string) => `webhook:${sourceId}:secret`,
 } as const;

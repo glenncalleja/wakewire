@@ -118,7 +118,20 @@ skills, mcp, config-reference).
     write) — see SECURITY.md for the reasoning. Migration 3 rebuilds the routes
     and sources tables to drop the `kind` CHECK constraints: extensible enums
     belong in zod at the boundary, not baked into SQLite DDL.
-14. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
+14. **Generic webhook source (added 2026-07-03).** Provider-specific code
+    collapsed into two declarative pieces: a verification preset (hmac-sha256
+    over the raw body with configurable header/prefix/encoding, or a
+    shared-secret header — no unsigned mode) and a field mapping (dot-paths
+    only, no expression language) that doubles as the payload trim whitelist.
+    Capture mode stores the first N raw payloads (capped, pruned to 10/source)
+    so the model can author mappings from real events via
+    `bridge_source_captures`. Source-level summary templates render leniently
+    (unmapped → "") unlike strict route templates — a mapping typo must not
+    make events undeliverable. Missing id path → body-hash delivery id, which
+    also blunts HMAC replay. ClickUp/Linear/Sentry ship as recipes/ rather
+    than dedicated adapters; bespoke Source implementations stay reserved for
+    non-webhook transports (IMAP, Socket Mode).
+15. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
     app-server adapter additionally declines any unexpected server→client approval
     request. Unattended operation must never wedge on an interactive prompt — the
     sandbox, not approvals, is the safety boundary (see SECURITY.md).

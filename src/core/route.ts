@@ -42,6 +42,27 @@ export const SlackMatchSchema = z
     }
   });
 
+export const WebhookMatchSchema = z.object({
+  /** Required: the generic source's provider name (its config.name). */
+  provider: z.string().min(1, "webhook routes must name a provider"),
+  /** Optional kind filters, prefix-matched like other sources. */
+  events: z.array(z.string().min(1)).min(1).optional(),
+  /** Conditions on MAPPED payload fields (all must hold). */
+  where: z
+    .array(
+      z
+        .object({
+          field: z.string().min(1),
+          equals: z.string().optional(),
+          contains: z.string().optional(),
+        })
+        .refine((w) => (w.equals === undefined) !== (w.contains === undefined), {
+          message: "each condition needs exactly one of equals/contains",
+        }),
+    )
+    .optional(),
+});
+
 export const GmailMatchSchema = z.object({
   /**
    * Required: a Gmail label (IMAP mailbox) to watch. Routes that would match
@@ -69,12 +90,14 @@ export const RouteTargetSchema = z.discriminatedUnion("type", [
 
 export const SandboxPolicySchema = z.enum(["read-only", "workspace-write"]);
 
-function matchSchemaFor(source: "github" | "gmail" | "slack") {
+function matchSchemaFor(source: "github" | "gmail" | "slack" | "webhook") {
   switch (source) {
     case "github":
       return GithubMatchSchema;
     case "gmail":
       return GmailMatchSchema;
+    case "webhook":
+      return WebhookMatchSchema;
     default:
       return SlackMatchSchema;
   }
@@ -83,7 +106,7 @@ function matchSchemaFor(source: "github" | "gmail" | "slack") {
 export const RouteInputSchema = z
   .object({
     name: z.string().min(1).max(100),
-    source: z.enum(["github", "gmail", "slack"]),
+    source: z.enum(["github", "gmail", "slack", "webhook"]),
     match: z.record(z.string(), z.unknown()),
     target: RouteTargetSchema,
     promptTemplate: z.string().max(4000).optional(),
@@ -114,13 +137,18 @@ export const RouteInputSchema = z
     const parsed = matchSchemaFor(route.source).safeParse(route.match);
     return {
       ...route,
-      match: (parsed.success ? parsed.data : route.match) as GithubMatch | GmailMatch | SlackMatch,
+      match: (parsed.success ? parsed.data : route.match) as
+        | GithubMatch
+        | GmailMatch
+        | SlackMatch
+        | WebhookMatch,
     };
   });
 
 export type GithubMatch = z.infer<typeof GithubMatchSchema>;
 export type GmailMatch = z.infer<typeof GmailMatchSchema>;
 export type SlackMatch = z.infer<typeof SlackMatchSchema>;
+export type WebhookMatch = z.infer<typeof WebhookMatchSchema>;
 export type RouteTarget = z.infer<typeof RouteTargetSchema>;
 export type SandboxPolicy = z.infer<typeof SandboxPolicySchema>;
 export type RouteInput = z.infer<typeof RouteInputSchema>;
@@ -128,8 +156,8 @@ export type RouteInput = z.infer<typeof RouteInputSchema>;
 export interface Route {
   id: string;
   name: string;
-  source: "github" | "gmail" | "slack";
-  match: GithubMatch | GmailMatch | SlackMatch;
+  source: "github" | "gmail" | "slack" | "webhook";
+  match: GithubMatch | GmailMatch | SlackMatch | WebhookMatch;
   target: RouteTarget;
   promptTemplate: string | null;
   sandbox: SandboxPolicy;

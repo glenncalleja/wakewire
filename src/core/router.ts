@@ -1,5 +1,5 @@
 import type { BridgeEvent } from "./event.js";
-import type { GithubMatch, GmailMatch, Route, SlackMatch } from "./route.js";
+import type { GithubMatch, GmailMatch, Route, SlackMatch, WebhookMatch } from "./route.js";
 
 /** Returns the enabled routes whose match rules accept this event. */
 export function matchRoutes(routes: Route[], event: BridgeEvent): Route[] {
@@ -16,9 +16,31 @@ function matches(route: Route, event: BridgeEvent): boolean {
       return matchGmail(route.match as GmailMatch, event);
     case "slack":
       return matchSlack(route.match as SlackMatch, event);
+    case "webhook":
+      return matchWebhook(route.match as WebhookMatch, event);
     default:
       return false;
   }
+}
+
+function matchWebhook(match: WebhookMatch, event: BridgeEvent): boolean {
+  const provider = str(event.payload.provider);
+  if (!match.provider || provider.toLowerCase() !== match.provider.toLowerCase()) return false;
+
+  if (match.events && match.events.length > 0) {
+    const kindMatches = match.events.some(
+      (e) => event.kind === e || event.kind.startsWith(`${e}.`),
+    );
+    if (!kindMatches) return false;
+  }
+
+  for (const condition of match.where ?? []) {
+    const value = str(event.payload[condition.field]).toLowerCase();
+    if (condition.equals !== undefined && value !== condition.equals.toLowerCase()) return false;
+    if (condition.contains !== undefined && !value.includes(condition.contains.toLowerCase()))
+      return false;
+  }
+  return true;
 }
 
 function matchSlack(match: SlackMatch, event: BridgeEvent): boolean {

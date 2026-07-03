@@ -6,6 +6,7 @@ import { Command } from "commander";
 import { authGmail } from "./cli/auth-gmail.js";
 import { authImap } from "./cli/auth-imap.js";
 import { authSlack } from "./cli/auth-slack.js";
+import { authWebhook } from "./cli/auth-webhook.js";
 import { installService, uninstallService } from "./cli/service.js";
 import { apiFetch, readDaemonState } from "./client.js";
 import { loadConfig } from "./config.js";
@@ -144,6 +145,14 @@ auth
   .option("--bot-token <token>", "bot token (prefer the hidden prompt)")
   .action(async (opts: { source?: string; appToken?: string; botToken?: string }) => {
     await authSlack(createLogger(), opts);
+  });
+auth
+  .command("webhook")
+  .description("Store a provider-issued signing secret for a generic webhook source")
+  .option("--source <id>", "webhook source id (from bridge_source_setup_webhook)")
+  .option("--secret <secret>", "provide non-interactively (prefer the hidden prompt)")
+  .action(async (opts: { source?: string; secret?: string }) => {
+    await authWebhook(createLogger(), opts);
   });
 
 const service = program.command("service").description("Run the daemon as a login service");

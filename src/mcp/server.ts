@@ -32,10 +32,11 @@ export async function runMcpServer(): Promise<void> {
         'For Gmail, match is like {"label":"agent-inbox"} (a label is required). ' +
         'For Slack, match is like {"events":["app_mention"]} or {"channels":["#dev"],"events":["message"]} ' +
         "(matching plain messages requires naming channels). " +
+        'For generic webhook sources, match is like {"provider":"sentry","events":["issue"],"where":[{"field":"level","equals":"error"}]}. ' +
         'target.type "this-thread" targets the current conversation — the tool will tell you how to resolve the thread id if it cannot.',
       inputSchema: {
         name: z.string().min(1).describe("Short human name for the route"),
-        source: z.enum(["github", "gmail", "slack"]),
+        source: z.enum(["github", "gmail", "slack", "webhook"]),
         match: z
           .record(z.string(), z.unknown())
           .describe("Source-specific match rules (see tool description)"),
@@ -209,6 +210,80 @@ export async function runMcpServer(): Promise<void> {
       },
     },
     async (args) => call("POST", "/api/sources/github/setup", args),
+  );
+
+  server.registerTool(
+    "bridge_source_setup_webhook",
+    {
+      title: "Set up a generic webhook source",
+      description:
+        "Register a signed webhook ingress for ANY provider (Sentry, Grafana, Linear, ClickUp, " +
+        "Stripe, CI, custom apps). Verification presets: hmac-sha256 (HMAC of the raw body in a " +
+        'header, optional prefix like "sha256=") or secret-header (shared secret sent verbatim). ' +
+        "The field mapping doubles as the payload whitelist — only mapped fields reach the model. " +
+        "Workflow for a new provider: 1) call this without a mapping (capture mode stores the next " +
+        "few raw events), 2) trigger a test event, 3) inspect it with bridge_source_captures, " +
+        '4) call this again with the mapping you authored, 5) add a route with source "webhook" ' +
+        'and match {"provider": "<name>"}.',
+      inputSchema: {
+        name: z
+          .string()
+          .regex(/^[a-z0-9][a-z0-9_-]*$/i)
+          .describe('Provider label, e.g. "sentry" — used as match.provider in routes'),
+        mode: z.enum(["smee", "listen"]).optional().describe("smee (default) or direct listen"),
+        verification: z
+          .object({
+            kind: z.enum(["hmac-sha256", "secret-header"]),
+            header: z.string().min(1).describe("Header name carrying the signature/secret"),
+            prefix: z.string().optional().describe('hmac only: literal prefix, e.g. "sha256="'),
+            encoding: z.enum(["hex", "base64"]).optional().describe("hmac only, default hex"),
+          })
+          .describe("How the provider signs requests"),
+        mapping: z
+          .object({
+            deliveryId: z.string().optional().describe("dot.path to a unique event id"),
+            kind: z.string().optional().describe("dot.path to the event type"),
+            occurredAt: z.string().optional().describe("dot.path to a timestamp"),
+            summary: z
+              .string()
+              .optional()
+              .describe('template over mapped aliases, e.g. "{{level}}: {{title}}"'),
+            fields: z
+              .record(z.string(), z.string())
+              .optional()
+              .describe("alias → dot.path; ONLY these fields reach the model"),
+          })
+          .optional()
+          .describe("Omit on first setup to use capture mode"),
+        capture: z
+          .number()
+          .int()
+          .min(0)
+          .max(10)
+          .optional()
+          .describe("How many upcoming raw events to capture (default 3 for new sources)"),
+        rotateSecret: z.boolean().optional().describe("Mint a new signing secret"),
+      },
+    },
+    async (args) => call("POST", "/api/sources/webhook/setup", args),
+  );
+
+  server.registerTool(
+    "bridge_source_captures",
+    {
+      title: "Inspect captured webhook payloads",
+      description:
+        "Raw payloads captured while a webhook source is in capture mode — read one to author " +
+        "the field mapping for bridge_source_setup_webhook.",
+      inputSchema: {
+        sourceId: z.string().min(1),
+        limit: z.number().int().positive().max(10).optional(),
+      },
+    },
+    async ({ sourceId, limit }) => {
+      const qs = limit ? `?limit=${limit}` : "";
+      return call("GET", `/api/sources/${encodeURIComponent(sourceId)}/captures${qs}`);
+    },
   );
 
   server.registerTool(

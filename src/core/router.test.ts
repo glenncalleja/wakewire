@@ -169,6 +169,52 @@ describe("matchRoutes — slack", () => {
   });
 });
 
+describe("matchRoutes — webhook", () => {
+  function webhookEvent(payload: Record<string, unknown>, kind = "issue.created"): BridgeEvent {
+    return {
+      source: "webhook",
+      kind,
+      deliveryId: "evt_1",
+      occurredAt: "t",
+      summary: "s",
+      payload,
+    };
+  }
+
+  it("requires the provider to match (case-insensitive)", () => {
+    const r = route({ source: "webhook", match: { provider: "Sentry" } });
+    expect(matchRoutes([r], webhookEvent({ provider: "sentry", level: "error" }))).toHaveLength(1);
+    expect(matchRoutes([r], webhookEvent({ provider: "stripe" }))).toHaveLength(0);
+  });
+
+  it("applies events prefix filters and where conditions", () => {
+    const r = route({
+      source: "webhook",
+      match: {
+        provider: "sentry",
+        events: ["issue"],
+        where: [
+          { field: "level", equals: "error" },
+          { field: "title", contains: "checkout" },
+        ],
+      },
+    });
+    const good = webhookEvent({
+      provider: "sentry",
+      level: "Error",
+      title: "TypeError in Checkout",
+    });
+    expect(matchRoutes([r], good)).toHaveLength(1);
+    expect(
+      matchRoutes([r], webhookEvent({ provider: "sentry", level: "warning", title: "checkout" })),
+    ).toHaveLength(0);
+    expect(
+      matchRoutes([r], webhookEvent({ provider: "sentry", level: "error", title: "login" })),
+    ).toHaveLength(0);
+    expect(matchRoutes([r], { ...good, kind: "metric_alert" })).toHaveLength(0);
+  });
+});
+
 describe("matchRoutes — gmail", () => {
   const gmailRoute = route({
     id: "g-1",

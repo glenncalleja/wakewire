@@ -6,6 +6,7 @@ import { GithubSourceConfigSchema, GithubWebhookSource } from "../sources/github
 import { GmailImapSource, GmailSourceConfigSchema } from "../sources/gmail/source.js";
 import { SlackSocketSource, SlackSourceConfigSchema } from "../sources/slack/source.js";
 import type { Source } from "../sources/types.js";
+import { WebhookIngestSource, WebhookSourceConfigSchema } from "../sources/webhook/source.js";
 
 /**
  * Owns the live Source instances, keeps them in sync with the sources table,
@@ -75,6 +76,22 @@ export class SourceManager {
       } else if (record.kind === "slack") {
         const config = SlackSourceConfigSchema.parse(record.config);
         source = new SlackSocketSource(id, config, this.secrets, ctx);
+      } else if (record.kind === "webhook") {
+        const config = WebhookSourceConfigSchema.parse(record.config);
+        source = new WebhookIngestSource(id, config, this.secrets, ctx, {
+          capture: (sourceId, body) => this.stores.captures.add(sourceId, body),
+          persistConfig: (patch) => {
+            const current = this.stores.sources.get(id);
+            if (current) {
+              this.stores.sources.upsert({
+                id,
+                kind: current.kind,
+                config: { ...current.config, ...patch },
+                enabled: current.enabled,
+              });
+            }
+          },
+        });
       } else {
         const config = GmailSourceConfigSchema.parse(record.config);
         source = new GmailImapSource(id, config, this.secrets, ctx, (state) => {

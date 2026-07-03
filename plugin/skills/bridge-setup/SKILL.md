@@ -46,6 +46,15 @@ If the user prefers fresh threads per event (e.g. "spawn a worktree and investig
 2. Relay those steps verbatim, then have the user run `bridgehead auth slack` in a terminal — both tokens go in via hidden prompts, never through this conversation.
 3. Slack routes match `app_mention` by default (any channel the bot is in); matching plain `message` events requires naming channels. Bot-posted messages are skipped by default.
 
+### Any other provider (Sentry, Grafana, Linear, ClickUp, Stripe, CI, custom)
+Use the generic webhook source. The loop:
+1. `bridge_source_setup_webhook` with `name` and `verification` only (check the provider's docs for its signature header; hmac-sha256 + header name covers most). Relay the returned URL + secret. The next 3 events are captured raw.
+2. Ask the user to trigger a test event, then read it with `bridge_source_captures`.
+3. Author the mapping from the real payload — `deliveryId`/`kind`/`occurredAt` paths, a `summary` template, and `fields` (alias → dot.path). Only mapped fields reach the model, so map what routes and prompts need, nothing more.
+4. Re-run `bridge_source_setup_webhook` with the mapping (the secret and relay URL are preserved).
+5. Route with `source: "webhook"`, `match: {"provider": "<name>", "where": [...]}`.
+Known-provider presets (ClickUp, Linear, Sentry) are in the package's recipes/ directory.
+
 ## 3. Create the route
 
 Call `bridge_route_add`. Examples:

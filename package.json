@@ -1,7 +1,7 @@
 {
   "name": "bridgehead",
   "version": "0.1.0",
-  "description": "Break the loop — GitHub, Gmail, and Slack events pushed straight into your local Codex threads, no polling.",
+  "description": "Break the loop \u2014 GitHub, Gmail, and Slack events pushed straight into your local Codex threads, no polling.",
   "keywords": [
     "codex",
     "webhooks",
@@ -24,6 +24,7 @@
   "files": [
     "dist",
     "plugin",
+    "recipes",
     "README.md",
     "SECURITY.md",
     "LICENSE"

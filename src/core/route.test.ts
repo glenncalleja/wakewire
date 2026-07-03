@@ -114,6 +114,32 @@ describe("RouteInputSchema", () => {
     expect(scoped.success).toBe(true); // slack may opt into workspace-write, like github
   });
 
+  it("webhook routes require a provider and validate where conditions", () => {
+    expect(
+      RouteInputSchema.safeParse({
+        name: "w",
+        source: "webhook",
+        match: {},
+        target: { type: "thread", threadId: "t-1" },
+      }).success,
+    ).toBe(false);
+    expect(
+      RouteInputSchema.safeParse({
+        name: "w",
+        source: "webhook",
+        match: { provider: "sentry", where: [{ field: "level" }] },
+        target: { type: "thread", threadId: "t-1" },
+      }).success,
+    ).toBe(false); // condition needs equals or contains
+    const ok = RouteInputSchema.safeParse({
+      name: "w",
+      source: "webhook",
+      match: { provider: "sentry", where: [{ field: "level", equals: "error" }] },
+      target: { type: "thread", threadId: "t-1" },
+    });
+    expect(ok.success).toBe(true);
+  });
+
   it("rejects unknown target types and missing thread ids", () => {
     expect(
       RouteInputSchema.safeParse({

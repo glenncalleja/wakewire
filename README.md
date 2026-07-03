@@ -57,6 +57,13 @@ exact steps), store the app + bot tokens with `bridgehead auth slack`, and route
 `app_mention`s (any channel the bot is in) or `message`s (named channels only —
 watch-everything is rejected, and bot chatter is skipped by default).
 
+**Any other provider** works through the generic webhook source
+(`bridge_source_setup_webhook`): pick a verification preset (HMAC-SHA256 header
+or shared-secret header), let capture mode store a few raw events, have the
+model author a field mapping from a real payload, done. The mapping doubles as
+the payload whitelist — only mapped fields ever reach the model. Ready-made
+recipes for ClickUp, Linear, and Sentry live in [recipes/](recipes/).
+
 ## What a delivered turn looks like
 
 ```
@@ -89,6 +96,8 @@ instructions. See [SECURITY.md](SECURITY.md).
 | `bridge_source_setup_github` | create the webhook ingress (smee relay or direct listen) |
 | `bridge_source_setup_gmail` | register a label watch (app password or OAuth) |
 | `bridge_source_setup_slack` | register a Socket Mode workspace watch |
+| `bridge_source_setup_webhook` | register a generic signed webhook (any provider) |
+| `bridge_source_captures` | inspect captured raw payloads to author mappings |
 | `bridge_source_remove` | stop and delete a source (and its secrets) |
 
 CLI (plumbing only): `bridgehead init | start | stop | status | logs | auth gmail | service install | mcp`.

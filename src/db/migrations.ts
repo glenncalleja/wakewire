@@ -116,6 +116,21 @@ const MIGRATIONS: ReadonlyArray<{
       ALTER TABLE sources_new RENAME TO sources;
     `,
   },
+  {
+    // Capture mode for generic webhook sources: the first few raw payloads are
+    // stored so the model can inspect a real event and author the field mapping.
+    version: 4,
+    name: "webhook-captures",
+    sql: `
+      CREATE TABLE captures (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        received_at TEXT NOT NULL,
+        body TEXT NOT NULL
+      );
+      CREATE INDEX captures_source ON captures (source_id, received_at);
+    `,
+  },
 ];
 
 /** targetVersion is for tests that need to exercise upgrade paths from older schemas. */

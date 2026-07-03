@@ -32,7 +32,7 @@ export interface Delivery {
   updatedAt: string;
 }
 
-export type SourceKind = "github" | "gmail" | "slack";
+export type SourceKind = "github" | "gmail" | "slack" | "webhook";
 
 export interface SourceRecord {
   id: string;
@@ -417,6 +417,65 @@ function toSource(row: SourceRow): SourceRecord {
   };
 }
 
+const CAPTURE_BODY_LIMIT = 32_000;
+const CAPTURES_KEPT_PER_SOURCE = 10;
+
+export interface Capture {
+  id: string;
+  sourceId: string;
+  receivedAt: string;
+  body: string;
+}
+
+/** Raw payloads captured while a webhook source is in capture mode. */
+export class CaptureStore {
+  constructor(private readonly db: Database) {}
+
+  add(sourceId: string, body: string): Capture {
+    const id = crypto.randomUUID();
+    const receivedAt = nowIso();
+    const truncated =
+      body.length > CAPTURE_BODY_LIMIT ? `${body.slice(0, CAPTURE_BODY_LIMIT)}… [truncated]` : body;
+    const run = this.db.transaction(() => {
+      this.db
+        .prepare("INSERT INTO captures (id, source_id, received_at, body) VALUES (?, ?, ?, ?)")
+        .run(id, sourceId, receivedAt, truncated);
+      this.db
+        .prepare(
+          `DELETE FROM captures WHERE source_id = ? AND id NOT IN (
+             SELECT id FROM captures WHERE source_id = ? ORDER BY received_at DESC LIMIT ?
+           )`,
+        )
+        .run(sourceId, sourceId, CAPTURES_KEPT_PER_SOURCE);
+    });
+    run();
+    return { id, sourceId, receivedAt, body: truncated };
+  }
+
+  list(sourceId: string, limit = 10): Capture[] {
+    const rows = this.db
+      .prepare(
+        "SELECT id, source_id, received_at, body FROM captures WHERE source_id = ? ORDER BY received_at DESC LIMIT ?",
+      )
+      .all(sourceId, Math.min(limit, CAPTURES_KEPT_PER_SOURCE)) as Array<{
+      id: string;
+      source_id: string;
+      received_at: string;
+      body: string;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      sourceId: r.source_id,
+      receivedAt: r.received_at,
+      body: r.body,
+    }));
+  }
+
+  removeForSource(sourceId: string): void {
+    this.db.prepare("DELETE FROM captures WHERE source_id = ?").run(sourceId);
+  }
+}
+
 export class SettingsStore {
   constructor(private readonly db: Database) {}
 
@@ -448,6 +507,7 @@ export interface Stores {
   routes: RouteStore;
   deliveries: DeliveryStore;
   sources: SourceStore;
+  captures: CaptureStore;
   settings: SettingsStore;
 }
 
@@ -456,6 +516,7 @@ export function createStores(db: Database): Stores {
     routes: new RouteStore(db),
     deliveries: new DeliveryStore(db),
     sources: new SourceStore(db),
+    captures: new CaptureStore(db),
     settings: new SettingsStore(db),
   };
 }
