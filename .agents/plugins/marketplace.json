@@ -1,0 +1,19 @@
+{
+  "name": "bridgehead-marketplace",
+  "interface": {
+    "displayName": "Bridgehead"
+  },
+  "plugins": [
+    {
+      "name": "bridgehead",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

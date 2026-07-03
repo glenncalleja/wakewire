@@ -1,0 +1,300 @@
+import crypto from "node:crypto";
+import { Hono } from "hono";
+import { z } from "zod";
+import type { DaemonConfig } from "../config.js";
+import type { DeliveryQueue } from "../core/queue.js";
+import { RouteInputSchema, SandboxPolicySchema } from "../core/route.js";
+import type { DeliveryStatus, Stores } from "../db/repos.js";
+import type { Logger } from "../logging.js";
+import type { SecretStore } from "../secrets/store.js";
+import { secretNames } from "../secrets/store.js";
+import type { AgentAdapter } from "../sinks/types.js";
+import { createSmeeChannel, GithubWebhookSource } from "../sources/github/source.js";
+import { GmailSourceConfigSchema } from "../sources/gmail/source.js";
+import { VERSION } from "../version.js";
+import type { SourceManager } from "./sources.js";
+
+export interface ApiContext {
+  stores: Stores;
+  queue: DeliveryQueue;
+  sources: SourceManager;
+  secrets: SecretStore;
+  adapter: AgentAdapter;
+  config: DaemonConfig;
+  logger: Logger;
+  startedAt: string;
+}
+
+/**
+ * Localhost-only management API. Everything under /api requires the bearer
+ * token from ~/.bridgehead/daemon.json. /ingress is exempt — those requests
+ * authenticate with webhook signatures instead.
+ */
+export function createApi(ctx: ApiContext): Hono {
+  const app = new Hono();
+
+  app.use("/api/*", async (c, next) => {
+    const header = c.req.header("authorization") ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!timingSafeEqual(token, ctx.config.apiToken)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    await next();
+  });
+
+  app.get("/api/health", async (c) => {
+    const reachable = await ctx.adapter.probe();
+    return c.json({
+      status: "ok",
+      version: VERSION,
+      pid: process.pid,
+      startedAt: ctx.startedAt,
+      adapter: { name: ctx.adapter.name, codexReachable: reachable },
+      queueDepth: ctx.queue.queueDepth(),
+      sources: ctx.sources.statuses(),
+      secretsBackend: ctx.secrets.backend,
+    });
+  });
+
+  // --- routes ---
+
+  app.get("/api/routes", (c) => c.json({ routes: ctx.stores.routes.list() }));
+
+  app.post("/api/routes", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = RouteInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "invalid route", issues: parsed.error.issues }, 400);
+    }
+    const route = ctx.stores.routes.create(parsed.data);
+    const warnings: string[] = [];
+    if (route.source === "gmail") {
+      const gmailSources = ctx.stores.sources.findByKind("gmail");
+      const label = (route.match as { label?: string }).label?.toLowerCase();
+      if (!gmailSources.some((s) => String(s.config.label ?? "").toLowerCase() === label)) {
+        warnings.push(
+          `no gmail source watches label "${label}" yet — run bridge_source_setup_gmail or bridgehead auth gmail`,
+        );
+      }
+    }
+    if (route.source === "github" && ctx.stores.sources.findByKind("github").length === 0) {
+      warnings.push("no github source configured yet — run bridge_source_setup_github");
+    }
+    ctx.logger.info({ route: route.name, id: route.id }, "route created");
+    return c.json({ route, warnings }, 201);
+  });
+
+  app.delete("/api/routes/:id", (c) => {
+    const removed = ctx.stores.routes.remove(c.req.param("id"));
+    return removed ? c.json({ ok: true }) : c.json({ error: "route not found" }, 404);
+  });
+
+  app.post("/api/routes/:id/toggle", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const enabled = z.object({ enabled: z.boolean() }).safeParse(body);
+    if (!enabled.success) return c.json({ error: "body must be {enabled: boolean}" }, 400);
+    const ok = ctx.stores.routes.setEnabled(c.req.param("id"), enabled.data.enabled);
+    return ok ? c.json({ ok: true }) : c.json({ error: "route not found" }, 404);
+  });
+
+  // --- deliveries ---
+
+  app.get("/api/deliveries", (c) => {
+    const limit = Number(c.req.query("limit") ?? "50");
+    const routeId = c.req.query("routeId");
+    const status = c.req.query("status") as DeliveryStatus | undefined;
+    const deliveries = ctx.stores.deliveries
+      .list({
+        limit: Number.isFinite(limit) ? limit : 50,
+        ...(routeId ? { routeId } : {}),
+        ...(status ? { status } : {}),
+      })
+      .map(publicDelivery);
+    return c.json({ deliveries });
+  });
+
+  app.post("/api/deliveries/:id/replay", (c) => {
+    try {
+      const delivery = ctx.queue.replay(c.req.param("id"));
+      return c.json({ delivery: publicDelivery(delivery) }, 201);
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  // --- sources ---
+
+  app.get("/api/sources", (c) =>
+    c.json({
+      sources: ctx.stores.sources.list().map((s) => ({
+        ...s,
+        config: redactSourceConfig(s.config),
+        live: ctx.sources.statuses()[s.id] ?? null,
+      })),
+    }),
+  );
+
+  app.post("/api/sources/github/setup", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z
+      .object({
+        repo: z
+          .string()
+          .regex(/^[\w.-]+\/[\w.-]+$/)
+          .optional(),
+        mode: z.enum(["smee", "listen"]).default("smee"),
+      })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+
+    const secret = crypto.randomBytes(24).toString("hex");
+    let smeeUrl: string | undefined;
+    if (parsed.data.mode === "smee") {
+      try {
+        smeeUrl = await createSmeeChannel();
+      } catch (err) {
+        return c.json(
+          {
+            error: `could not create smee.io channel: ${err instanceof Error ? err.message : err}`,
+          },
+          502,
+        );
+      }
+    }
+    const record = ctx.stores.sources.upsert({
+      kind: "github",
+      config: {
+        mode: parsed.data.mode,
+        ...(smeeUrl ? { smeeUrl } : {}),
+        ...(parsed.data.repo ? { repo: parsed.data.repo } : {}),
+      },
+    });
+    ctx.secrets.set(secretNames.githubWebhookSecret(record.id), secret);
+    await ctx.sources.restart(record.id);
+
+    const payloadUrl = smeeUrl ?? `http://127.0.0.1:<your-tunnel>/ingress/github/${record.id}`;
+    return c.json(
+      {
+        sourceId: record.id,
+        mode: parsed.data.mode,
+        webhookUrl: payloadUrl,
+        secret,
+        instructions: [
+          `1. Open https://github.com/${parsed.data.repo ?? "<owner>/<repo>"}/settings/hooks/new`,
+          `2. Payload URL: ${payloadUrl}`,
+          "3. Content type: application/json",
+          `4. Secret: ${secret}`,
+          "5. Choose the events to send (at least: pushes), then Add webhook.",
+          "6. GitHub sends a ping — check bridge_status / GET /api/sources to confirm receipt.",
+        ],
+      },
+      201,
+    );
+  });
+
+  app.post("/api/sources/gmail/setup", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z
+      .object({
+        label: z.string().min(1),
+        user: z.string().email(),
+      })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+    const config = GmailSourceConfigSchema.parse({
+      label: parsed.data.label,
+      auth: { kind: "gmail-oauth", user: parsed.data.user },
+    });
+    const record = ctx.stores.sources.upsert({ kind: "gmail", config });
+    return c.json(
+      {
+        sourceId: record.id,
+        instructions: [
+          "Gmail needs a one-time OAuth consent in a browser, so this step runs in a terminal:",
+          `1. Create an OAuth client (Desktop app) in Google Cloud Console with the Gmail IMAP scope (https://mail.google.com/). Bridgehead is self-hosted, so you bring your own client id/secret — this avoids Google's restricted-scope app verification.`,
+          `2. Run: bridgehead auth gmail --source ${record.id}`,
+          `3. The daemon will start watching label "${parsed.data.label}" once auth completes.`,
+        ],
+      },
+      201,
+    );
+  });
+
+  app.post("/api/sources/:id/restart", async (c) => {
+    const ok = await ctx.sources.restart(c.req.param("id"));
+    return ok ? c.json({ ok: true }) : c.json({ error: "source not found" }, 404);
+  });
+
+  // --- test injection (M1 demo + smoke tests) ---
+
+  app.post("/api/inject", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = z
+      .object({
+        threadId: z.string().min(1),
+        prompt: z.string().min(1),
+        sandbox: SandboxPolicySchema.default("read-only"),
+      })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+    try {
+      const result = await ctx.adapter.deliverToThread(parsed.data.threadId, parsed.data.prompt, {
+        sandbox: parsed.data.sandbox,
+      });
+      return c.json({ result });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
+    }
+  });
+
+  // --- webhook ingress (listen-mode github sources; signature-authenticated) ---
+
+  app.post("/ingress/github/:sourceId", async (c) => {
+    const source = ctx.sources.get(c.req.param("sourceId"));
+    if (!source || !(source instanceof GithubWebhookSource)) {
+      return c.json({ error: "unknown source" }, 404);
+    }
+    const rawBody = await c.req.text();
+    const result = await source.handleWebhook({
+      eventName: c.req.header("x-github-event"),
+      deliveryId: c.req.header("x-github-delivery"),
+      signature: c.req.header("x-hub-signature-256"),
+      rawBody,
+    });
+    return c.json({ message: result.message }, result.status as 200);
+  });
+
+  return app;
+}
+
+function publicDelivery(d: {
+  id: string;
+  routeId: string;
+  sourceDeliveryId: string;
+  receivedAt: string;
+  status: string;
+  attemptCount: number;
+  nextAttemptAt: string | null;
+  event: unknown;
+  renderedPrompt: string | null;
+  threadId: string | null;
+  turnId: string | null;
+  error: string | null;
+  coalescedInto: string | null;
+  isReplay: boolean;
+}) {
+  return d;
+}
+
+function redactSourceConfig(config: Record<string, unknown>): Record<string, unknown> {
+  // Source configs hold no secrets by design (secrets live in the secret
+  // store), but keep this seam so nothing sensitive can leak by accident.
+  return config;
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}

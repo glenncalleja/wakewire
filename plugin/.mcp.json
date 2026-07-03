@@ -1,0 +1,6 @@
+{
+  "bridgehead": {
+    "command": "bridgehead",
+    "args": ["mcp"]
+  }
+}

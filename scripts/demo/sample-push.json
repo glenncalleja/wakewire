@@ -1,0 +1,1 @@
+{"ref":"refs/heads/main","compare":"https://github.com/acme/api/compare/aaa111...bbb222","repository":{"full_name":"acme/api"},"pusher":{"name":"demo-user"},"commits":[{"id":"bbb222","message":"fix: handle empty payloads in webhook parser","author":{"name":"demo-user"},"added":[],"removed":[],"modified":["src/parser.ts","src/parser.test.ts"]}]}
