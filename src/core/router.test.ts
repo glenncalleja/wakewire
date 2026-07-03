@@ -12,6 +12,7 @@ function route(overrides: Partial<Route>): Route {
     target: { type: "thread", threadId: "t-1" },
     promptTemplate: null,
     sandbox: "read-only",
+    rateLimitPerMinute: null,
     enabled: true,
     createdAt: "2026-07-03T00:00:00.000Z",
     ...overrides,

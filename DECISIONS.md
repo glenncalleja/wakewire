@@ -91,7 +91,17 @@ skills, mcp, config-reference).
     carrier ("N events coalesced… latest payload"), the rest are marked
     `coalesced`. A single over-budget delivery is not delayed — coalescing only
     kicks in when there's actually a burst to merge.
-12. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
+12. **Ported from the parallel implementation.** A second independent
+    implementation of the same plan (previously at `tools/bridgehead`, since
+    retired) had four ideas worth adopting, merged 2026-07-03:
+    deterministic source ids (`github-<owner>-<repo>`, `gmail-<user>-<label>`)
+    so repeated setup upserts instead of accumulating sources — re-setup also
+    reuses the existing smee channel and preserves the Gmail UID watermark;
+    per-route `rateLimitPerMinute` (falling back to the daemon default of 10);
+    exec-adapter prompts passed via stdin (`codex exec ... -`) to dodge argv
+    length limits; and `.mcp.json` launching the MCP server with
+    `npx -y bridgehead mcp` so the plugin works without a global install.
+13. **Approvals.** Injected turns always run `approvalPolicy: "never"`; the
     app-server adapter additionally declines any unexpected server→client approval
     request. Unattended operation must never wedge on an interactive prompt — the
     sandbox, not approvals, is the safety boundary (see SECURITY.md).

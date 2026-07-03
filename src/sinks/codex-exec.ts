@@ -30,8 +30,9 @@ export class CodexExecAdapter implements AgentAdapter {
     opts: DeliveryOptions,
   ): Promise<DeliveryResult> {
     const { args, lastMessageFile } = this.baseArgs(opts);
-    args.push("resume", threadId, prompt);
-    const { stdout } = await this.run(args, threadId);
+    // "-" reads the prompt from stdin — rendered prompts can exceed argv limits.
+    args.push("resume", threadId, "-");
+    const { stdout } = await this.run(args, threadId, prompt);
     return {
       threadId: parseThreadId(stdout) ?? threadId,
       finalResponse: readAndUnlink(lastMessageFile),
@@ -40,8 +41,8 @@ export class CodexExecAdapter implements AgentAdapter {
 
   async startThread(prompt: string, opts: DeliveryOptions): Promise<DeliveryResult> {
     const { args, lastMessageFile } = this.baseArgs(opts, { cd: true });
-    args.push(prompt);
-    const { stdout } = await this.run(args, null);
+    args.push("-");
+    const { stdout } = await this.run(args, null, prompt);
     const threadId = parseThreadId(stdout);
     if (!threadId) throw new UnreachableError("codex exec did not report a thread id");
     return { threadId, finalResponse: readAndUnlink(lastMessageFile) };
@@ -78,9 +79,13 @@ export class CodexExecAdapter implements AgentAdapter {
     return { args, lastMessageFile };
   }
 
-  private async run(args: string[], threadId: string | null): Promise<{ stdout: string }> {
+  private async run(
+    args: string[],
+    threadId: string | null,
+    stdin?: string,
+  ): Promise<{ stdout: string }> {
     try {
-      return await this.spawnCollect(args, 30 * 60_000);
+      return await this.spawnCollect(args, 30 * 60_000, stdin);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (/ENOENT/i.test(message)) {
@@ -96,10 +101,15 @@ export class CodexExecAdapter implements AgentAdapter {
     }
   }
 
-  private spawnCollect(args: string[], timeoutMs: number): Promise<{ stdout: string }> {
+  private spawnCollect(
+    args: string[],
+    timeoutMs: number,
+    stdin?: string,
+  ): Promise<{ stdout: string }> {
     const bin = this.config.codexPath ?? "codex";
     return new Promise((resolve, reject) => {
-      const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawn(bin, args, { stdio: ["pipe", "pipe", "pipe"] });
+      child.stdin.end(stdin ?? "");
       let stdout = "";
       let stderr = "";
       const timer = setTimeout(() => {

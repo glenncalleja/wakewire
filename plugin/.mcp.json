@@ -1,6 +1,6 @@
 {
   "bridgehead": {
-    "command": "bridgehead",
-    "args": ["mcp"]
+    "command": "npx",
+    "args": ["-y", "bridgehead", "mcp"]
   }
 }

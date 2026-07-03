@@ -59,6 +59,15 @@ export async function runMcpServer(): Promise<void> {
           .describe(
             "Sandbox for injected turns. Default read-only. Gmail routes are always read-only.",
           ),
+        rateLimitPerMinute: z
+          .number()
+          .int()
+          .positive()
+          .max(600)
+          .optional()
+          .describe(
+            "Deliveries per minute for this route before bursts coalesce into a digest turn (default 10).",
+          ),
       },
     },
     async (args) => {
@@ -90,6 +99,7 @@ export async function runMcpServer(): Promise<void> {
         target,
         ...(args.promptTemplate ? { promptTemplate: args.promptTemplate } : {}),
         ...(args.sandbox ? { sandbox: args.sandbox } : {}),
+        ...(args.rateLimitPerMinute ? { rateLimitPerMinute: args.rateLimitPerMinute } : {}),
       });
       return appendNote(
         result,

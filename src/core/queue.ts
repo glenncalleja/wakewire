@@ -177,10 +177,11 @@ export class DeliveryQueue {
    * turn carried by the newest delivery.
    */
   private maybeCoalesce(route: Route, delivery: Delivery, ready: Delivery[]): Delivery {
+    const limit = route.rateLimitPerMinute ?? this.ratePerMinute;
     const windowStart = new Date(this.now().getTime() - 60_000).toISOString();
     const recent = this.stores.deliveries.countRecentAttempts(route.id, windowStart);
     const siblings = ready.filter((d) => d.routeId === route.id && d.id !== delivery.id);
-    if (recent < this.ratePerMinute || siblings.length === 0) return delivery;
+    if (recent < limit || siblings.length === 0) return delivery;
 
     const all = [delivery, ...siblings];
     const carrier = all[all.length - 1] as Delivery;

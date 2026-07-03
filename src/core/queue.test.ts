@@ -268,6 +268,21 @@ describe("DeliveryQueue", () => {
     expect(delivered).toHaveLength(3);
   });
 
+  it("route-level rateLimitPerMinute overrides the queue default", async () => {
+    // Queue default is 10, route allows only 1/minute.
+    const strictRoute = stores.routes.create(routeInput({ name: "strict", rateLimitPerMinute: 1 }));
+    queue.enqueueEvent(strictRoute, makeEvent("d-1"));
+    await queue.tick();
+    expect(adapter.calls).toHaveLength(1);
+
+    queue.enqueueEvent(strictRoute, makeEvent("d-2"));
+    queue.enqueueEvent(strictRoute, makeEvent("d-3"));
+    await queue.tick();
+    expect(adapter.calls).toHaveLength(2);
+    expect(adapter.calls[1]?.prompt).toContain("2 github events coalesced");
+    expect(stores.deliveries.list({ status: "coalesced" })).toHaveLength(1);
+  });
+
   it("starts new threads (and requires a worktree hook for worktree targets)", async () => {
     const newThreadRoute = stores.routes.create(
       routeInput({

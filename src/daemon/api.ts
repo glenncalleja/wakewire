@@ -147,21 +147,32 @@ export function createApi(ctx: ApiContext): Hono {
       .safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
 
+    // Deterministic id: re-running setup for the same repo updates the same
+    // source (and keeps its smee channel) instead of accumulating new ones.
+    const sourceId = deterministicSourceId("github", parsed.data.repo ?? "default");
+    const existing = ctx.stores.sources.get(sourceId);
+
     const secret = crypto.randomBytes(24).toString("hex");
     let smeeUrl: string | undefined;
     if (parsed.data.mode === "smee") {
-      try {
-        smeeUrl = await createSmeeChannel();
-      } catch (err) {
-        return c.json(
-          {
-            error: `could not create smee.io channel: ${err instanceof Error ? err.message : err}`,
-          },
-          502,
-        );
+      const existingUrl = existing?.config.smeeUrl;
+      if (typeof existingUrl === "string" && existingUrl.length > 0) {
+        smeeUrl = existingUrl;
+      } else {
+        try {
+          smeeUrl = await createSmeeChannel();
+        } catch (err) {
+          return c.json(
+            {
+              error: `could not create smee.io channel: ${err instanceof Error ? err.message : err}`,
+            },
+            502,
+          );
+        }
       }
     }
     const record = ctx.stores.sources.upsert({
+      id: sourceId,
       kind: "github",
       config: {
         mode: parsed.data.mode,
@@ -201,11 +212,15 @@ export function createApi(ctx: ApiContext): Hono {
       })
       .safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid body", issues: parsed.error.issues }, 400);
+    const sourceId = deterministicSourceId("gmail", `${parsed.data.user}:${parsed.data.label}`);
+    const existing = ctx.stores.sources.get(sourceId);
     const config = GmailSourceConfigSchema.parse({
       label: parsed.data.label,
       auth: { kind: "gmail-oauth", user: parsed.data.user },
+      // Re-running setup must not reset the UID watermark and replay old mail.
+      ...(existing?.config.state ? { state: existing.config.state } : {}),
     });
-    const record = ctx.stores.sources.upsert({ kind: "gmail", config });
+    const record = ctx.stores.sources.upsert({ id: sourceId, kind: "gmail", config });
     return c.json(
       {
         sourceId: record.id,
@@ -290,6 +305,10 @@ function redactSourceConfig(config: Record<string, unknown>): Record<string, unk
   // Source configs hold no secrets by design (secrets live in the secret
   // store), but keep this seam so nothing sensitive can leak by accident.
   return config;
+}
+
+function deterministicSourceId(kind: string, key: string): string {
+  return `${kind}-${key.toLowerCase().replaceAll(/[^a-z0-9._-]+/g, "-")}`;
 }
 
 function timingSafeEqual(a: string, b: string): boolean {

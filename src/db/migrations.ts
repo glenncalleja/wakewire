@@ -65,6 +65,13 @@ const MIGRATIONS: ReadonlyArray<{ version: number; name: string; sql: string }> 
       );
     `,
   },
+  {
+    version: 2,
+    name: "route-rate-limit",
+    sql: `
+      ALTER TABLE routes ADD COLUMN rate_limit_per_minute INTEGER;
+    `,
+  },
 ];
 
 export function migrate(db: Database): void {

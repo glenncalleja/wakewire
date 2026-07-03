@@ -1,6 +1,8 @@
 # M3 demo: zero-to-route from inside the Codex app
 
-Prerequisite: `npm install -g bridgehead` (the plugin's MCP server runs `bridgehead mcp`).
+The plugin's MCP server starts via `npx -y bridgehead mcp`, so it works without a
+global install. The daemon itself still needs `npm install -g bridgehead` (or a
+local checkout) to run `bridgehead start`.
 
 1. Add the plugin marketplace and install:
 

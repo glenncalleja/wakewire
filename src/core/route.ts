@@ -48,6 +48,8 @@ export const RouteInputSchema = z
     target: RouteTargetSchema,
     promptTemplate: z.string().max(4000).optional(),
     sandbox: SandboxPolicySchema.default("read-only"),
+    /** Deliveries per minute before coalescing into a digest. Omit to use the daemon default (10). */
+    rateLimitPerMinute: z.number().int().positive().max(600).optional(),
     enabled: z.boolean().default(true),
   })
   .superRefine((route, ctx) => {
@@ -81,6 +83,8 @@ export interface Route {
   target: RouteTarget;
   promptTemplate: string | null;
   sandbox: SandboxPolicy;
+  /** null = use the daemon-wide default. */
+  rateLimitPerMinute: number | null;
   enabled: boolean;
   createdAt: string;
 }

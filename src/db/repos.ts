@@ -47,6 +47,7 @@ interface RouteRow {
   target_json: string;
   prompt_template: string | null;
   sandbox_policy: string;
+  rate_limit_per_minute: number | null;
   enabled: number;
   created_at: string;
 }
@@ -88,8 +89,8 @@ export class RouteStore {
     const createdAt = nowIso();
     this.db
       .prepare(
-        `INSERT INTO routes (id, name, source_kind, match_json, target_json, prompt_template, sandbox_policy, enabled, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO routes (id, name, source_kind, match_json, target_json, prompt_template, sandbox_policy, rate_limit_per_minute, enabled, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -99,6 +100,7 @@ export class RouteStore {
         JSON.stringify(input.target),
         input.promptTemplate ?? null,
         input.sandbox,
+        input.rateLimitPerMinute ?? null,
         input.enabled ? 1 : 0,
         createdAt,
       );
@@ -150,6 +152,7 @@ function toRoute(row: RouteRow): Route {
     target: JSON.parse(row.target_json) as RouteTarget,
     promptTemplate: row.prompt_template,
     sandbox: row.sandbox_policy as SandboxPolicy,
+    rateLimitPerMinute: row.rate_limit_per_minute,
     enabled: row.enabled === 1,
     createdAt: row.created_at,
   };
