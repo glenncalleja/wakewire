@@ -1,7 +1,7 @@
 {
   "name": "bridgehead",
   "version": "0.1.0",
-  "description": "Push external events (GitHub webhooks, Gmail) into local Codex app threads in near real time.",
+  "description": "Break the loop — GitHub and Gmail events pushed straight into your local Codex threads, no polling.",
   "keywords": [
     "codex",
     "webhooks",

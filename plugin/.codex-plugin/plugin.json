@@ -1,7 +1,7 @@
 {
   "name": "bridgehead",
   "version": "0.1.0",
-  "description": "Deliver external events (GitHub webhooks, Gmail) into local Codex threads in near real time, configured conversationally.",
+  "description": "Break the loop — deliver GitHub and Gmail events into local Codex threads in near real time, configured conversationally.",
   "license": "MIT",
   "keywords": ["webhooks", "github", "gmail", "automation", "events"],
   "skills": "./skills/",
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Bridgehead",
     "shortDescription": "Push GitHub and Gmail events into your Codex threads",
-    "longDescription": "Bridgehead runs a small local daemon that receives GitHub webhooks (via a smee.io relay by default) and Gmail messages (IMAP IDLE), matches them against routes you define in conversation, and injects them as new turns into the Codex threads you choose. Includes a delivery log, replay, dedup, signature verification, and conservative sandbox defaults.",
+    "longDescription": "Break the loop: instead of agents polling on a timer, bridgehead runs a small local daemon that receives GitHub webhooks (via a smee.io relay by default) and Gmail messages (IMAP IDLE), matches them against routes you define in conversation, and injects them as new turns into the Codex threads you choose. Includes a delivery log, replay, dedup, signature verification, and conservative sandbox defaults.",
     "category": "Productivity",
     "brandColor": "#2D6CDF"
   }

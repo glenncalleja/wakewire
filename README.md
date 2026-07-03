@@ -1,9 +1,11 @@
 # bridgehead
 
-Push external events — GitHub pushes/PRs/issues, Gmail messages — into your local
-[Codex](https://developers.openai.com/codex) threads in near real time. No polling
-automations: a webhook fires, and seconds later a new turn appears in the thread
-you chose, with the event framed as untrusted data and instructions you wrote.
+**Break the loop.** GitHub and Gmail events, pushed straight into your
+[Codex](https://developers.openai.com/codex) threads.
+
+No more agents polling on a timer: a webhook fires or an email lands, and seconds
+later a new turn appears in the thread you chose — the event framed as untrusted
+data, under instructions you wrote.
 
 ```
  GitHub ──smee──▶ ┌──────────────────────────────────────────────┐
