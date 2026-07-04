@@ -146,3 +146,47 @@ skills, mcp, config-reference).
     app-server adapter additionally declines any unexpected server→client approval
     request. Unattended operation must never wedge on an interactive prompt — the
     sandbox, not approvals, is the safety boundary (see SECURITY.md).
+
+## Deliberately deferred
+
+### Write-capable email routes (deferred 2026-07-04)
+
+Gmail routes are forced `read-only`. This deliberately blocks a legitimate use
+case — email as a personal command channel ("mail myself 'redeploy staging' and
+have Codex act on it"). We accept that cost for now, and here is the reasoning so
+it is not re-litigated:
+
+**Why not just allow it (or gate it on a `From` match).** Prompt-injection risk
+is really about *unauthenticated content*. Slack authenticates the sender (the
+workspace vouches for the user id) and GitHub/webhook payloads are HMAC-signed —
+so opting those into `workspace-write` is an informed choice backed by a real
+authenticity signal. Plain email authenticates nothing about the sender at the
+layer bridgehead operates: the `From` header is forgeable, so a route scoped
+`fromContains: me@x` means "emails that *claim* to be from me," which an attacker
+can satisfy — and if a Gmail filter labels on `from:me`, the spoofed mail gets
+routed too. So a write-capable email route gated on `From` is the
+dangerous-but-looks-safe shape: the user would reasonably believe it is scoped to
+them when it is not. Read-only email from any sender remains fine (an injected
+email can at worst mislead a summary).
+
+**Why not a secret in the subject/body.** A subject line is the least private part
+of an email (notifications, lock screens, previews, logs); the body is only
+marginally better (cleartext on the mail server, quoted into replies, forwarded,
+indexed, captured to disk here). A bearer secret anywhere in an email leaks into
+many persistent places — a weak design.
+
+**How we would enable it, when revisited.** Authenticate the sender instead of
+carrying a secret: Gmail runs DKIM/DMARC and stamps `Authentication-Results` on
+delivery, and since we read straight from Gmail's IMAP we can trust that header —
+verifying "really came from this domain, not forged" with no shared secret to
+leak. Then write-capable email becomes a legitimate, informed opt-in on the same
+footing as Slack/GitHub. Alternatively, keep email read-only for triage and route
+*actions* through channels that authenticate their sender by construction (a Slack
+DM to the bot, a signed webhook from a Shortcut) — use the right medium for the
+trust level.
+
+Related hardening still open (see the security-review round): make sandbox
+network-off explicit and identical across all three adapters (today only the
+app-server adapter forces `networkAccess: false` for `workspace-write`; the SDK
+and exec adapters inherit Codex's default), and warn at route-creation time when a
+route pairs an untrusted-content source with `workspace-write`.
