@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { SecretStore } from "../../secrets/store.js";
 import { secretNames } from "../../secrets/store.js";
 import type { Source, SourceContext } from "../types.js";
-import { isBotEvent, slackToBridgeEvent } from "./normalize.js";
+import { isBotEvent, slackToWakeEvent } from "./normalize.js";
 
 export const SlackSourceConfigSchema = z.object({
   /** Informational workspace name used in the deterministic source id. */
@@ -59,9 +59,7 @@ export class SlackSocketSource implements Source {
     const appToken = this.secrets.get(secretNames.slackAppToken(this.id));
     const botToken = this.secrets.get(secretNames.slackBotToken(this.id));
     if (!appToken) {
-      throw new Error(
-        `no Slack app token stored for source ${this.id} — run: bridgehead auth slack`,
-      );
+      throw new Error(`no Slack app token stored for source ${this.id} — run: wakewire auth slack`);
     }
     this.web = botToken ? new WebClient(botToken) : null;
     if (!this.web) {
@@ -155,19 +153,19 @@ export class SlackSocketSource implements Source {
       channelName: await this.resolveChannel(strOf(event.channel)),
       userName: await this.resolveUser(strOf(event.user)),
     };
-    const bridgeEvent = slackToBridgeEvent({
+    const wakeEvent = slackToWakeEvent({
       event,
       eventId,
       teamId: envelope.body.team_id,
       names,
     });
-    if (!bridgeEvent) {
+    if (!wakeEvent) {
       await envelope.ack();
       return;
     }
     this.received++;
     this.lastEventAt = new Date().toISOString();
-    this.ctx.emit(bridgeEvent); // synchronous: matches routes and enqueues to SQLite
+    this.ctx.emit(wakeEvent); // synchronous: matches routes and enqueues to SQLite
     await envelope.ack();
   }
 

@@ -1,5 +1,5 @@
 {
-  "name": "bridgehead",
+  "name": "wakewire",
   "version": "0.1.0",
   "description": "Break the loop — GitHub, Gmail, and Slack events pushed straight into your local Codex threads, no polling.",
   "keywords": [
@@ -17,7 +17,7 @@
     "node": ">=20.18"
   },
   "bin": {
-    "bridgehead": "dist/cli.js"
+    "wakewire": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

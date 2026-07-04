@@ -4,7 +4,7 @@ import { openDatabase } from "../db/db.js";
 import { createStores, type Stores } from "../db/repos.js";
 import type { AgentAdapter, DeliveryOptions, DeliveryResult } from "../sinks/types.js";
 import { BusyError, PermanentError, UnreachableError } from "../sinks/types.js";
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 import { DeliveryQueue } from "./queue.js";
 import type { Route, RouteInput } from "./route.js";
 
@@ -65,7 +65,7 @@ class FakeAdapter implements AgentAdapter {
   }
 }
 
-function makeEvent(deliveryId: string, extra: Record<string, unknown> = {}): BridgeEvent {
+function makeEvent(deliveryId: string, extra: Record<string, unknown> = {}): WakeEvent {
   return {
     source: "github",
     kind: "push",

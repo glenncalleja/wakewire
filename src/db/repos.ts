@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import type { Database } from "better-sqlite3";
-import type { BridgeEvent } from "../core/event.js";
-import { BridgeEventSchema } from "../core/event.js";
+import type { WakeEvent } from "../core/event.js";
+import { WakeEventSchema } from "../core/event.js";
 import type { Route, RouteInput, RouteTarget, SandboxPolicy } from "../core/route.js";
 
 export type DeliveryStatus =
@@ -22,7 +22,7 @@ export interface Delivery {
   status: DeliveryStatus;
   attemptCount: number;
   nextAttemptAt: string | null;
-  event: BridgeEvent;
+  event: WakeEvent;
   renderedPrompt: string | null;
   threadId: string | null;
   turnId: string | null;
@@ -170,7 +170,7 @@ export class DeliveryStore {
    */
   enqueue(args: {
     routeId: string;
-    event: BridgeEvent;
+    event: WakeEvent;
     renderedPrompt: string;
     isReplay?: boolean;
   }): Delivery | null {
@@ -336,7 +336,7 @@ function toDelivery(row: DeliveryRow): Delivery {
     status: row.status as DeliveryStatus,
     attemptCount: row.attempt_count,
     nextAttemptAt: row.next_attempt_at,
-    event: BridgeEventSchema.parse(JSON.parse(row.event_json)),
+    event: WakeEventSchema.parse(JSON.parse(row.event_json)),
     renderedPrompt: row.rendered_prompt,
     threadId: row.thread_id,
     turnId: row.turn_id,

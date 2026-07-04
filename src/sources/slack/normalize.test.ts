@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isBotEvent, slackToBridgeEvent } from "./normalize.js";
+import { isBotEvent, slackToWakeEvent } from "./normalize.js";
 
-describe("slackToBridgeEvent", () => {
+describe("slackToWakeEvent", () => {
   it("trims an app_mention with names resolved", () => {
-    const event = slackToBridgeEvent({
+    const event = slackToWakeEvent({
       event: {
         type: "app_mention",
         user: "U123",
@@ -37,7 +37,7 @@ describe("slackToBridgeEvent", () => {
   });
 
   it("handles plain messages, subtypes, and missing names", () => {
-    const plain = slackToBridgeEvent({
+    const plain = slackToWakeEvent({
       event: { type: "message", user: "U1", channel: "C1", text: "hi", ts: "1.0" },
       eventId: "Ev1",
       teamId: undefined,
@@ -49,7 +49,7 @@ describe("slackToBridgeEvent", () => {
     expect(plain?.payload.channelName).toBe("C1");
     expect(plain?.payload.userName).toBe("U1");
 
-    const subtype = slackToBridgeEvent({
+    const subtype = slackToWakeEvent({
       event: { type: "message", subtype: "channel_topic", channel: "C1", ts: "1.0" },
       eventId: "Ev2",
       teamId: "T1",
@@ -59,7 +59,7 @@ describe("slackToBridgeEvent", () => {
   });
 
   it("truncates long text at 4000 chars", () => {
-    const event = slackToBridgeEvent({
+    const event = slackToWakeEvent({
       event: { type: "message", user: "U1", channel: "C1", text: "y".repeat(9000), ts: "1.0" },
       eventId: "Ev3",
       teamId: undefined,
@@ -71,7 +71,7 @@ describe("slackToBridgeEvent", () => {
   });
 
   it("normalizes reactions", () => {
-    const event = slackToBridgeEvent({
+    const event = slackToWakeEvent({
       event: {
         type: "reaction_added",
         user: "U1",
@@ -90,7 +90,7 @@ describe("slackToBridgeEvent", () => {
 
   it("returns null for typeless events", () => {
     expect(
-      slackToBridgeEvent({ event: {}, eventId: "Ev5", teamId: undefined, names: {} }),
+      slackToWakeEvent({ event: {}, eventId: "Ev5", teamId: undefined, names: {} }),
     ).toBeNull();
   });
 });

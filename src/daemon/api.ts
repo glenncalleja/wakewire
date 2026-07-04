@@ -30,7 +30,7 @@ export interface ApiContext {
 
 /**
  * Localhost-only management API. Everything under /api requires the bearer
- * token from ~/.bridgehead/daemon.json. /ingress is exempt — those requests
+ * token from ~/.wakewire/daemon.json. /ingress is exempt — those requests
  * authenticate with webhook signatures instead.
  */
 export function createApi(ctx: ApiContext): Hono {
@@ -76,12 +76,12 @@ export function createApi(ctx: ApiContext): Hono {
       const label = (route.match as { label?: string }).label?.toLowerCase();
       if (!gmailSources.some((s) => String(s.config.label ?? "").toLowerCase() === label)) {
         warnings.push(
-          `no gmail source watches label "${label}" yet — run bridge_source_setup_gmail or bridgehead auth gmail`,
+          `no gmail source watches label "${label}" yet — run wakewire_source_setup_gmail or wakewire auth gmail`,
         );
       }
     }
     if (route.source === "github" && ctx.stores.sources.findByKind("github").length === 0) {
-      warnings.push("no github source configured yet — run bridge_source_setup_github");
+      warnings.push("no github source configured yet — run wakewire_source_setup_github");
     }
     ctx.logger.info({ route: route.name, id: route.id }, "route created");
     return c.json({ route, warnings }, 201);
@@ -199,7 +199,7 @@ export function createApi(ctx: ApiContext): Hono {
           "3. Content type: application/json",
           `4. Secret: ${secret}`,
           "5. Choose the events to send (at least: pushes), then Add webhook.",
-          "6. GitHub sends a ping — check bridge_status / GET /api/sources to confirm receipt.",
+          "6. GitHub sends a ping — check wakewire_status / GET /api/sources to confirm receipt.",
         ],
       },
       201,
@@ -237,8 +237,8 @@ export function createApi(ctx: ApiContext): Hono {
       authKind === "gmail-oauth"
         ? [
             "Gmail needs a one-time OAuth consent in a browser, so this step runs in a terminal:",
-            `1. Create an OAuth client (Desktop app) in Google Cloud Console with the Gmail IMAP scope (https://mail.google.com/). Bridgehead is self-hosted, so you bring your own client id/secret — this avoids Google's restricted-scope app verification.`,
-            `2. Run: bridgehead auth gmail --source ${record.id}`,
+            `1. Create an OAuth client (Desktop app) in Google Cloud Console with the Gmail IMAP scope (https://mail.google.com/). WakeWire is self-hosted, so you bring your own client id/secret — this avoids Google's restricted-scope app verification.`,
+            `2. Run: wakewire auth gmail --source ${record.id}`,
             `3. The daemon will start watching label "${label}" once auth completes.`,
           ]
         : [
@@ -246,7 +246,7 @@ export function createApi(ctx: ApiContext): Hono {
             host === "imap.gmail.com"
               ? "1. For Gmail, create an app password at https://myaccount.google.com/apppasswords (requires 2-Step Verification). Your normal account password will not work."
               : "1. Use the account's IMAP password or an app password if the provider supports them.",
-            `2. Run: bridgehead auth imap --source ${record.id}`,
+            `2. Run: wakewire auth imap --source ${record.id}`,
             `3. The daemon will start watching label/folder "${label}" once the password is stored.`,
           ];
     return c.json({ sourceId: record.id, authKind, instructions }, 201);
@@ -342,11 +342,11 @@ export function createApi(ctx: ApiContext): Hono {
           `1. Point ${input.name}'s webhook at: ${payloadUrl}`,
           secret
             ? `2. Configure its signing secret: ${secret}`
-            : "2. Signing secret unchanged (pass rotateSecret to mint a new one). If the provider issues its own secret, store it with: bridgehead auth webhook --source " +
+            : "2. Signing secret unchanged (pass rotateSecret to mint a new one). If the provider issues its own secret, store it with: wakewire auth webhook --source " +
               record.id,
           `3. Signature expected: ${verificationHint}.`,
           config.captureRemaining > 0
-            ? `4. The next ${config.captureRemaining} event(s) will be captured raw. Send a test event, inspect it with bridge_source_captures, then re-run this setup with a mapping.`
+            ? `4. The next ${config.captureRemaining} event(s) will be captured raw. Send a test event, inspect it with wakewire_source_captures, then re-run this setup with a mapping.`
             : "4. Mapping is set — events flow through it. Re-run setup with a new mapping to change it.",
         ],
       },
@@ -388,7 +388,7 @@ export function createApi(ctx: ApiContext): Hono {
           "3. Features → OAuth & Permissions → Bot Token Scopes: add app_mentions:read, channels:history, channels:read, users:read (add groups:history/groups:read too for private channels).",
           "4. Features → Event Subscriptions: enable, and under 'Subscribe to bot events' add app_mention and message.channels (and message.groups for private channels).",
           "5. Install the app to the workspace (OAuth & Permissions → Install) and copy the Bot User OAuth Token (starts with xoxb-).",
-          `6. In a terminal run: bridgehead auth slack --source ${record.id}  — it prompts for both tokens (hidden input).`,
+          `6. In a terminal run: wakewire auth slack --source ${record.id}  — it prompts for both tokens (hidden input).`,
           "7. Invite the bot to the channels it should read: /invite @your-app in each channel.",
         ],
       },

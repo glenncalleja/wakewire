@@ -3,7 +3,7 @@ import type { Logger } from "../logging.js";
 import type { AgentAdapter } from "../sinks/types.js";
 import { BusyError, PermanentError, UnreachableError } from "../sinks/types.js";
 import { buildDigestPrompt, buildPrompt } from "./envelope.js";
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 import type { Route } from "./route.js";
 import { DEFAULT_TEMPLATES, renderTemplate, TemplateError, templateFields } from "./template.js";
 
@@ -71,11 +71,7 @@ export class DeliveryQueue {
   }
 
   /** Render the prompt for a matched event and persist it as a queued delivery. */
-  enqueueEvent(
-    route: Route,
-    event: BridgeEvent,
-    opts: { isReplay?: boolean } = {},
-  ): Delivery | null {
+  enqueueEvent(route: Route, event: WakeEvent, opts: { isReplay?: boolean } = {}): Delivery | null {
     let prompt: string;
     try {
       prompt = this.renderPrompt(route, event);
@@ -165,7 +161,7 @@ export class DeliveryQueue {
     return this.stores.deliveries.countPending();
   }
 
-  private renderPrompt(route: Route, event: BridgeEvent): string {
+  private renderPrompt(route: Route, event: WakeEvent): string {
     const template = route.promptTemplate ?? DEFAULT_TEMPLATES[event.source];
     const instructions = renderTemplate(template, templateFields(route.name, event));
     return buildPrompt({ routeName: route.name, event, instructions });

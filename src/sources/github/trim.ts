@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "../../core/event.js";
+import type { WakeEvent } from "../../core/event.js";
 
 const COMMIT_MESSAGE_LIMIT = 500;
 const MAX_COMMITS = 20;
@@ -11,7 +11,7 @@ export function trimGithubEvent(args: {
   eventName: string;
   deliveryId: string;
   payload: Record<string, unknown>;
-}): BridgeEvent | null {
+}): WakeEvent | null {
   const { eventName, deliveryId, payload } = args;
   const repo = repoFullName(payload);
   if (!repo) return null; // ping and other repo-less events are not routable
@@ -44,7 +44,7 @@ function trimPush(args: {
   deliveryId: string;
   occurredAt: string;
   payload: Record<string, unknown>;
-}): BridgeEvent {
+}): WakeEvent {
   const { repo, deliveryId, occurredAt, payload } = args;
   const ref = typeof payload.ref === "string" ? payload.ref : "";
   const branch = ref.replace(/^refs\/(heads|tags)\//, "");
@@ -97,7 +97,7 @@ function trimPullRequest(args: {
   deliveryId: string;
   occurredAt: string;
   payload: Record<string, unknown>;
-}): BridgeEvent {
+}): WakeEvent {
   const { repo, kind, action, deliveryId, occurredAt, payload } = args;
   const pr = isRecord(payload.pull_request) ? payload.pull_request : {};
   const number =
@@ -134,7 +134,7 @@ function trimIssue(args: {
   deliveryId: string;
   occurredAt: string;
   payload: Record<string, unknown>;
-}): BridgeEvent {
+}): WakeEvent {
   const { repo, kind, action, deliveryId, occurredAt, payload } = args;
   const issue = isRecord(payload.issue) ? payload.issue : {};
   const number = typeof issue.number === "number" ? issue.number : undefined;

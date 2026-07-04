@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 
 /**
  * The rendered turn always separates trusted route instructions from untrusted
@@ -10,7 +10,7 @@ import type { BridgeEvent } from "./event.js";
 
 export interface EnvelopeInput {
   routeName: string;
-  event: BridgeEvent;
+  event: WakeEvent;
   /** Already rendered from the route's (trusted) template. */
   instructions: string;
 }
@@ -21,7 +21,7 @@ export function buildPrompt(input: EnvelopeInput): string {
   const payloadJson = fenceSafeJson({ summary: event.summary, ...event.payload });
 
   return [
-    `[bridgehead event] ${routeName} — ${event.kind} from ${event.source} at ${when}`,
+    `[wakewire event] ${routeName} — ${event.kind} from ${event.source} at ${when}`,
     "",
     "INSTRUCTIONS (from the user's route config, written by the user, trusted):",
     instructions,
@@ -38,9 +38,9 @@ export function buildPrompt(input: EnvelopeInput): string {
 /** Digest turn used when a route exceeds its rate limit and deliveries are coalesced. */
 export function buildDigestPrompt(input: {
   routeName: string;
-  source: BridgeEvent["source"];
+  source: WakeEvent["source"];
   instructions: string;
-  events: BridgeEvent[];
+  events: WakeEvent[];
 }): string {
   const { routeName, source, instructions, events } = input;
   const latest = events[events.length - 1];
@@ -54,7 +54,7 @@ export function buildDigestPrompt(input: {
   const latestJson = latest ? fenceSafeJson({ summary: latest.summary, ...latest.payload }) : "{}";
 
   return [
-    `[bridgehead digest] ${routeName} — ${events.length} ${source} events coalesced (rate limit)`,
+    `[wakewire digest] ${routeName} — ${events.length} ${source} events coalesced (rate limit)`,
     "",
     "INSTRUCTIONS (from the user's route config, written by the user, trusted):",
     instructions,

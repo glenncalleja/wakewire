@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 import type { Route } from "./route.js";
 import { matchRoutes } from "./router.js";
 
@@ -20,8 +20,8 @@ function route(overrides: Partial<Route>): Route {
 }
 
 function githubEvent(
-  overrides: Partial<BridgeEvent> & { payload?: Record<string, unknown> },
-): BridgeEvent {
+  overrides: Partial<WakeEvent> & { payload?: Record<string, unknown> },
+): WakeEvent {
   return {
     source: "github",
     kind: "push",
@@ -47,7 +47,7 @@ describe("matchRoutes — github", () => {
     expect(matchRoutes([route({})], githubEvent({ payload: { repo: "other/repo" } }))).toHaveLength(
       0,
     );
-    const gmailEvent: BridgeEvent = {
+    const gmailEvent: WakeEvent = {
       source: "gmail",
       kind: "email",
       deliveryId: "d",
@@ -92,8 +92,8 @@ describe("matchRoutes — github", () => {
 
 describe("matchRoutes — slack", () => {
   function slackEvent(
-    overrides: Partial<BridgeEvent> & { payload?: Record<string, unknown> },
-  ): BridgeEvent {
+    overrides: Partial<WakeEvent> & { payload?: Record<string, unknown> },
+  ): WakeEvent {
     return {
       source: "slack",
       kind: "app_mention",
@@ -187,7 +187,7 @@ describe("matchRoutes — slack", () => {
 });
 
 describe("matchRoutes — webhook", () => {
-  function webhookEvent(payload: Record<string, unknown>, kind = "issue.created"): BridgeEvent {
+  function webhookEvent(payload: Record<string, unknown>, kind = "issue.created"): WakeEvent {
     return {
       source: "webhook",
       kind,
@@ -239,7 +239,7 @@ describe("matchRoutes — gmail", () => {
     match: { label: "agent-inbox", fromContains: "boss@" },
   });
 
-  function email(payload: Record<string, unknown>): BridgeEvent {
+  function email(payload: Record<string, unknown>): WakeEvent {
     return {
       source: "gmail",
       kind: "email",

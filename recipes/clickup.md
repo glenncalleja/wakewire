@@ -8,7 +8,7 @@ ClickUp's API, then store the secret ClickUp returned.
 ## 1. Source
 
 ```json
-bridge_source_setup_webhook {
+wakewire_source_setup_webhook {
   "name": "clickup",
   "verification": { "kind": "hmac-sha256", "header": "x-signature" },
   "mapping": {
@@ -43,13 +43,13 @@ curl -X POST "https://api.clickup.com/api/v2/team/<team_id>/webhook" \
 The response contains `webhook.secret` — store it:
 
 ```bash
-bridgehead auth webhook --source webhook-clickup
+wakewire auth webhook --source webhook-clickup
 ```
 
 ## 3. Route
 
 ```json
-bridge_route_add {
+wakewire_route_add {
   "name": "clickup task events",
   "source": "webhook",
   "match": { "provider": "clickup" },

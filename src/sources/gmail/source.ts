@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { SecretStore } from "../../secrets/store.js";
 import { secretNames } from "../../secrets/store.js";
 import type { Source, SourceContext } from "../types.js";
-import { emailToBridgeEvent } from "./extract.js";
+import { emailToWakeEvent } from "./extract.js";
 
 export const GmailSourceConfigSchema = z.object({
   /** Gmail label (IMAP mailbox) to watch. Required — no watch-everything sources. */
@@ -180,7 +180,7 @@ export class GmailImapSource implements Source {
       if (!message.source) continue;
       try {
         const mail = await simpleParser(message.source);
-        const event = emailToBridgeEvent({
+        const event = emailToWakeEvent({
           mail,
           label: this.config.label,
           fallbackId: `imap-${this.id}-${this.state.uidValidity}-${message.uid}`,
@@ -228,7 +228,7 @@ export class GmailImapSource implements Source {
     const refreshToken = this.secrets.get(secretNames.gmailRefreshToken(this.id));
     if (!clientId || !clientSecret || !refreshToken) {
       throw new Error(
-        `gmail OAuth is not configured for source ${this.id} — run: bridgehead auth gmail`,
+        `gmail OAuth is not configured for source ${this.id} — run: wakewire auth gmail`,
       );
     }
     const oauth = new OAuth2Client({ clientId, clientSecret });

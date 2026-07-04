@@ -63,7 +63,7 @@ export class CodexExecAdapter implements AgentAdapter {
   ): { args: string[]; lastMessageFile: string } {
     const lastMessageFile = path.join(
       os.tmpdir(),
-      `bridgehead-last-message-${process.pid}-${Math.random().toString(36).slice(2)}.txt`,
+      `wakewire-last-message-${process.pid}-${Math.random().toString(36).slice(2)}.txt`,
     );
     const args = [
       "exec",

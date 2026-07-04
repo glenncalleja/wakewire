@@ -1,5 +1,5 @@
 export { buildDigestPrompt, buildPrompt } from "./core/envelope.js";
-export { type BridgeEvent, BridgeEventSchema } from "./core/event.js";
+export { type WakeEvent, WakeEventSchema } from "./core/event.js";
 export { DeliveryQueue, threadKey } from "./core/queue.js";
 export {
   type Route,

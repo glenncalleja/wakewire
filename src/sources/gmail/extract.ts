@@ -1,6 +1,6 @@
 import { convert } from "html-to-text";
 import type { ParsedMail } from "mailparser";
-import type { BridgeEvent } from "../../core/event.js";
+import type { WakeEvent } from "../../core/event.js";
 
 const BODY_LIMIT = 4_000;
 
@@ -9,11 +9,11 @@ const BODY_LIMIT = 4_000;
  * HTML is converted with html-to-text (never regex-stripped). Body is
  * truncated to 4,000 chars.
  */
-export function emailToBridgeEvent(args: {
+export function emailToWakeEvent(args: {
   mail: ParsedMail;
   label: string;
   fallbackId: string;
-}): BridgeEvent {
+}): WakeEvent {
   const { mail, label, fallbackId } = args;
   const from = mail.from?.text ?? "unknown";
   const to = addressText(mail.to);

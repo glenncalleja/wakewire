@@ -5,7 +5,7 @@ import { z } from "zod";
  * source (see sources/github/trim.ts and sources/gmail/extract.ts) — the queue
  * and sink never see raw provider payloads.
  */
-export const BridgeEventSchema = z.object({
+export const WakeEventSchema = z.object({
   source: z.enum(["github", "gmail", "slack", "webhook"]),
   /** e.g. "push", "pull_request.opened", "email", "app_mention", "message" */
   kind: z.string().min(1),
@@ -19,4 +19,4 @@ export const BridgeEventSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 
-export type BridgeEvent = z.infer<typeof BridgeEventSchema>;
+export type WakeEvent = z.infer<typeof WakeEventSchema>;

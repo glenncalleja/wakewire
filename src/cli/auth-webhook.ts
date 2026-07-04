@@ -23,7 +23,7 @@ export async function authWebhook(
       sourceId = candidates[0]?.id;
     } else if (candidates.length === 0) {
       console.error(
-        "No webhook source configured yet. Create one first (from Codex: bridge_source_setup_webhook).",
+        "No webhook source configured yet. Create one first (from Codex: wakewire_source_setup_webhook).",
       );
       process.exitCode = 1;
       return;
@@ -59,6 +59,6 @@ export async function authWebhook(
     await apiFetch(`/api/sources/${sourceId}/restart`, { method: "POST" });
     console.log("Daemon notified — the source is (re)starting.");
   } catch {
-    console.log("Daemon not running; the source will start with the next `bridgehead start`.");
+    console.log("Daemon not running; the source will start with the next `wakewire start`.");
   }
 }

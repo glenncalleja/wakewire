@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "../core/event.js";
+import type { WakeEvent } from "../core/event.js";
 import type { Stores } from "../db/repos.js";
 import type { Logger } from "../logging.js";
 import type { SecretStore } from "../secrets/store.js";
@@ -19,7 +19,7 @@ export class SourceManager {
     private readonly stores: Stores,
     private readonly secrets: SecretStore,
     private readonly logger: Logger,
-    private readonly onEvent: (event: BridgeEvent) => void,
+    private readonly onEvent: (event: WakeEvent) => void,
   ) {}
 
   async startAll(): Promise<void> {

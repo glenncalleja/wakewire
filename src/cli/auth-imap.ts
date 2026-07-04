@@ -27,7 +27,7 @@ export async function authImap(
     } else if (candidates.length === 0) {
       console.error(
         "No password-based mail source configured yet. Create one first (from Codex: " +
-          'bridge_source_setup_gmail with authKind "imap-password").',
+          'wakewire_source_setup_gmail with authKind "imap-password").',
       );
       process.exitCode = 1;
       return;
@@ -50,7 +50,7 @@ export async function authImap(
   const auth = source.config.auth as { kind?: string; user?: string; host?: string } | undefined;
   if (auth?.kind !== "imap-password") {
     console.error(
-      `source ${sourceId} uses ${auth?.kind ?? "unknown"} auth — use \`bridgehead auth gmail\` for OAuth sources`,
+      `source ${sourceId} uses ${auth?.kind ?? "unknown"} auth — use \`wakewire auth gmail\` for OAuth sources`,
     );
     process.exitCode = 1;
     return;
@@ -73,6 +73,6 @@ export async function authImap(
     await apiFetch(`/api/sources/${sourceId}/restart`, { method: "POST" });
     console.log("Daemon notified — the mail source is (re)starting.");
   } catch {
-    console.log("Daemon not running; the source will start with the next `bridgehead start`.");
+    console.log("Daemon not running; the source will start with the next `wakewire start`.");
   }
 }

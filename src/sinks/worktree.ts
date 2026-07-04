@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 /**
  * For {type:"new-thread", worktree:true} targets: create a detached git
  * worktree of the route's cwd so the spawned thread works on an isolated
- * checkout. Worktrees accumulate under ~/.bridgehead/worktrees; `git worktree
+ * checkout. Worktrees accumulate under ~/.wakewire/worktrees; `git worktree
  * remove` them when done.
  */
 export async function prepareWorktree(baseCwd: string, deliveryId: string): Promise<string> {

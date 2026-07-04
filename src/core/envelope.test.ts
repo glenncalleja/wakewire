@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildDigestPrompt, buildPrompt, fenceSafeJson } from "./envelope.js";
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 
-function event(payload: Record<string, unknown>): BridgeEvent {
+function event(payload: Record<string, unknown>): WakeEvent {
   return {
     source: "github",
     kind: "push",
@@ -20,7 +20,7 @@ describe("buildPrompt", () => {
       event: event({ repo: "acme/api" }),
       instructions: "Summarize the push.",
     });
-    expect(prompt).toContain("[bridgehead event] ci watch — push from github at ");
+    expect(prompt).toContain("[wakewire event] ci watch — push from github at ");
     expect(prompt).toContain(
       "INSTRUCTIONS (from the user's route config, written by the user, trusted):\nSummarize the push.",
     );

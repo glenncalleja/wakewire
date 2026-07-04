@@ -1,6 +1,6 @@
 {
-  "bridgehead": {
+  "wakewire": {
     "command": "npx",
-    "args": ["-y", "bridgehead", "mcp"]
+    "args": ["-y", "wakewire", "mcp"]
   }
 }

@@ -18,7 +18,7 @@ the manual smoke test below. Run it before cutting a release.
 
 1. **Init & start**
    ```bash
-   BRIDGEHEAD_HOME=$(mktemp -d) ; export BRIDGEHEAD_HOME
+   WAKEWIRE_HOME=$(mktemp -d) ; export WAKEWIRE_HOME
    node dist/cli.js init
    node dist/cli.js start &      # foreground daemon in the background of this shell
    node dist/cli.js status       # expect adapter.codexReachable: true
@@ -26,7 +26,7 @@ the manual smoke test below. Run it before cutting a release.
 2. **M1 — injection.** Create a target thread and inject:
    ```bash
    codex exec --skip-git-repo-check "say READY and stop" --json | grep thread.started
-   ./scripts/demo/m1-inject.sh <threadId> "hello from bridgehead"
+   ./scripts/demo/m1-inject.sh <threadId> "hello from wakewire"
    codex resume <threadId>   # verify both turns are there
    ```
 3. **M2 — webhook path.** Create a listen-mode source + route (see header of

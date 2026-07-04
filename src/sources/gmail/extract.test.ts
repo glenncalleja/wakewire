@@ -1,6 +1,6 @@
 import { simpleParser } from "mailparser";
 import { describe, expect, it } from "vitest";
-import { emailToBridgeEvent, extractBody } from "./extract.js";
+import { emailToWakeEvent, extractBody } from "./extract.js";
 
 describe("extractBody", () => {
   it("prefers plain text when present", () => {
@@ -24,7 +24,7 @@ describe("extractBody", () => {
   });
 });
 
-describe("emailToBridgeEvent", () => {
+describe("emailToWakeEvent", () => {
   it("builds a trimmed event from a parsed message", async () => {
     const raw = [
       "Message-ID: <msg-1@example.com>",
@@ -37,7 +37,7 @@ describe("emailToBridgeEvent", () => {
       "Please deploy after 6pm.",
     ].join("\r\n");
     const mail = await simpleParser(raw);
-    const event = emailToBridgeEvent({ mail, label: "agent-inbox", fallbackId: "fb-1" });
+    const event = emailToWakeEvent({ mail, label: "agent-inbox", fallbackId: "fb-1" });
     expect(event.source).toBe("gmail");
     expect(event.kind).toBe("email");
     expect(event.deliveryId).toBe("<msg-1@example.com>");
@@ -53,7 +53,7 @@ describe("emailToBridgeEvent", () => {
 
   it("falls back to the synthetic id when Message-ID is missing", async () => {
     const mail = await simpleParser("Subject: no id\r\n\r\nbody");
-    const event = emailToBridgeEvent({ mail, label: "l", fallbackId: "imap-src-5-42" });
+    const event = emailToWakeEvent({ mail, label: "l", fallbackId: "imap-src-5-42" });
     expect(event.deliveryId).toBe("imap-src-5-42");
     expect(event.payload.subject).toBe("no id");
   });

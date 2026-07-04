@@ -18,7 +18,7 @@ skills, mcp, config-reference).
   `thread/start`/`thread/resume` take a `sandbox` *mode* string. The SDK exposes
   sandbox on `ThreadOptions` only, but since it re-applies options to every spawned
   `codex exec` run, our per-delivery resume gives per-delivery sandbox in practice.
-  `bridge_route_add` output still carries a note (the override persists for
+  `wakewire_route_add` output still carries a note (the override persists for
   subsequent turns on that thread until changed).
 - **The SDK shells out.** `@openai/codex-sdk` (0.142.5) spawns its vendored codex
   binary as `codex exec --experimental-json ... resume <id>` per `run()`. Threads
@@ -39,9 +39,9 @@ skills, mcp, config-reference).
 1. **MCP tools cannot see the current thread id.** Confirmed: no session metadata
    reaches MCP servers, and upstream request openai/codex#19937 was closed
    not-planned. But shell commands run inside a conversation DO get
-   `CODEX_THREAD_ID`. So `bridge_route_add` with `target: "this-thread"` returns
+   `CODEX_THREAD_ID`. So `wakewire_route_add` with `target: "this-thread"` returns
    instructions telling the model to run `echo "$CODEX_THREAD_ID"` and re-call
-   with the explicit id; the `$bridge-setup` skill teaches this flow up front.
+   with the explicit id; the `$wakewire-setup` skill teaches this flow up front.
    This is exactly the fallback the plan asked us to verify and design for.
 2. **Adapter naming/split.** The plan's `CodexAppServerAdapter (via SDK)` became
    two adapters, because the SDK does not talk to the app-server at all (it wraps
@@ -76,7 +76,7 @@ skills, mcp, config-reference).
 3. **Live-refresh behavior (M1 observation).** Officially undocumented. Smoke-tested
    on 2026-07-03 against codex-cli 0.142.0 (ChatGPT auth): injecting via the daemon's
    `/api/inject` with the default SDK adapter ran the turn to completion
-   (`finalResponse: "ACK-BRIDGEHEAD"`) and appended both the injected user turn and
+   (`finalResponse: "ACK-WAKEWIRE"`) and appended both the injected user turn and
    the agent reply to the *same* rollout file under `~/.codex/sessions` — the thread
    resumes with full history in `codex resume`. With the SDK adapter the turn runs in
    the daemon's spawned process and appears in the app after the thread is reloaded
@@ -106,7 +106,7 @@ skills, mcp, config-reference).
 8. **Gmail watermark.** First connection starts at the current end of the mailbox
    (no history replay); `uidValidity` changes reset the watermark forward. Message
    dedup rides on Message-ID (falling back to a uidValidity+uid synthetic id).
-9. **npm name.** `bridgehead` was unclaimed on npm as of 2026-07-03 — kept the
+9. **npm name.** `wakewire` was unclaimed on npm as of 2026-07-03 — kept the
    working name.
 10. **commander@14, not 15** — v15 requires Node ≥22.12; the plan's floor is
     Node ≥20. zod v4, TypeScript 5.9, Biome 2.x, vitest 4.
@@ -117,14 +117,14 @@ skills, mcp, config-reference).
     kicks in when there's actually a burst to merge.
 12. **Ported from the parallel implementation.** A second independent
     implementation of the same plan (previously at `tools/bridgehead`, since
-    retired) had four ideas worth adopting, merged 2026-07-03:
+    retired (archived)) had four ideas worth adopting, merged 2026-07-03:
     deterministic source ids (`github-<owner>-<repo>`, `gmail-<user>-<label>`)
     so repeated setup upserts instead of accumulating sources — re-setup also
     reuses the existing smee channel and preserves the Gmail UID watermark;
     per-route `rateLimitPerMinute` (falling back to the daemon default of 10);
     exec-adapter prompts passed via stdin (`codex exec ... -`) to dodge argv
     length limits; and `.mcp.json` launching the MCP server with
-    `npx -y bridgehead mcp` so the plugin works without a global install.
+    `npx -y wakewire mcp` so the plugin works without a global install.
 13. **Slack via Socket Mode (added 2026-07-03).** `@slack/socket-mode` 2.x +
     `@slack/web-api`: an outbound WebSocket authenticated by an app-level token,
     so — like the smee relay — no public endpoint. Deliverable envelopes are
@@ -149,7 +149,7 @@ skills, mcp, config-reference).
     only, no expression language) that doubles as the payload trim whitelist.
     Capture mode stores the first N raw payloads (capped, pruned to 10/source)
     so the model can author mappings from real events via
-    `bridge_source_captures`. Source-level summary templates render leniently
+    `wakewire_source_captures`. Source-level summary templates render leniently
     (unmapped → "") unlike strict route templates — a mapping typo must not
     make events undeliverable. Missing id path → body-hash delivery id, which
     also blunts HMAC replay. ClickUp/Linear/Sentry ship as recipes/ rather
@@ -159,6 +159,19 @@ skills, mcp, config-reference).
     app-server adapter additionally declines any unexpected server→client approval
     request. Unattended operation must never wedge on an interactive prompt — the
     sandbox, not approvals, is the safety boundary (see SECURITY.md).
+
+16. **Renamed bridgehead → WakeWire (2026-07-04).** The original working name
+    collided with the BridgeMind ecosystem (BridgeCode, BridgeMCP, BridgeSpace…),
+    which occupies the agentic/vibe-coding space this tool lives in — a
+    Bridge-prefixed Codex tool would read as part of that family. Descriptive
+    alternatives converged on strip-mined prefixes (agent*, thread* — AgentWire
+    at agentwire.run is a near-identical competing product; AgentRelay is
+    quadruple-taken). "wakewire" names the anti-polling idea itself (events WAKE
+    the agent; the wire delivers them), was free on npm and clean in the product
+    space (nearest neighbors: Wake-on-LAN relays — friendly heritage, not
+    collision). Home dir moved to ~/.wakewire, keychain service renamed
+    (entries migrated), env vars WAKEWIRE_*, MCP tools wakewire_*, skills
+    $wakewire-setup / $wakewire-inspect. No back-compat shims: pre-publish.
 
 ## Deliberately deferred
 
@@ -174,7 +187,7 @@ is really about *unauthenticated content*. Slack authenticates the sender (the
 workspace vouches for the user id) and GitHub/webhook payloads are HMAC-signed —
 so opting those into `workspace-write` is an informed choice backed by a real
 authenticity signal. Plain email authenticates nothing about the sender at the
-layer bridgehead operates: the `From` header is forgeable, so a route scoped
+layer wakewire operates: the `From` header is forgeable, so a route scoped
 `fromContains: me@x` means "emails that *claim* to be from me," which an attacker
 can satisfy — and if a Gmail filter labels on `from:me`, the spoofed mail gets
 routed too. So a write-capable email route gated on `From` is the

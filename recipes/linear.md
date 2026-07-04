@@ -9,7 +9,7 @@ identifies this payload" — the correct dedup key.
 ## 1. Source
 
 ```json
-bridge_source_setup_webhook {
+wakewire_source_setup_webhook {
   "name": "linear",
   "verification": { "kind": "hmac-sha256", "header": "linear-signature" },
   "mapping": {
@@ -41,12 +41,12 @@ step 1 and pick the resource types (Issues, Comments, …). Then open the
 webhook's detail page, copy **Linear's signing secret**, and store it:
 
 ```bash
-bridgehead auth webhook --source webhook-linear
+wakewire auth webhook --source webhook-linear
 ```
 
-(Ignore the secret bridgehead generated at setup — Linear issues its own.)
+(Ignore the secret wakewire generated at setup — Linear issues its own.)
 
-Note: Linear requires an exact HTTP 200 response within 5 seconds; bridgehead's
+Note: Linear requires an exact HTTP 200 response within 5 seconds; wakewire's
 listen-mode ingress returns exactly that.
 
 ## 3. Route examples
@@ -54,7 +54,7 @@ listen-mode ingress returns exactly that.
 Urgent bugs into a thread:
 
 ```json
-bridge_route_add {
+wakewire_route_add {
   "name": "urgent linear issues",
   "source": "webhook",
   "match": {

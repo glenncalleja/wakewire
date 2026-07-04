@@ -2,12 +2,12 @@
 # M2 demo: simulate a signed GitHub push delivery against a listen-mode source.
 #
 # Setup (once):
-#   1. bridgehead start --detach
+#   1. wakewire start --detach
 #   2. Create a listen-mode source and note sourceId + secret:
 #        curl -s -X POST http://127.0.0.1:$PORT/api/sources/github/setup \
 #          -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 #          -d '{"repo":"acme/api","mode":"listen"}'
-#   3. Add a route for repo acme/api (bridge_route_add from Codex, or POST /api/routes).
+#   3. Add a route for repo acme/api (wakewire_route_add from Codex, or POST /api/routes).
 #
 #   ./scripts/demo/m2-github-push.sh <sourceId> <secret> [deliveryId]
 #
@@ -17,7 +17,7 @@ set -euo pipefail
 SOURCE_ID="${1:?usage: m2-github-push.sh <sourceId> <secret> [deliveryId]}"
 SECRET="${2:?usage: m2-github-push.sh <sourceId> <secret> [deliveryId]}"
 DELIVERY_ID="${3:-demo-$(date +%s)}"
-STATE_FILE="${BRIDGEHEAD_HOME:-$HOME/.bridgehead}/daemon.json"
+STATE_FILE="${WAKEWIRE_HOME:-$HOME/.wakewire}/daemon.json"
 PORT=$(python3 -c "import json;print(json.load(open('$STATE_FILE'))['port'])")
 
 BODY=$(cat "$(dirname "$0")/sample-push.json")
@@ -31,4 +31,4 @@ curl -sS -X POST "http://127.0.0.1:${PORT}/ingress/github/${SOURCE_ID}" \
   --data-binary "$BODY" | python3 -m json.tool
 
 echo
-echo "Check the delivery log: bridge_deliveries (from Codex) or GET /api/deliveries."
+echo "Check the delivery log: wakewire_deliveries (from Codex) or GET /api/deliveries."

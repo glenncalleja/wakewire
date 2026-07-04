@@ -11,7 +11,7 @@ const GMAIL_SCOPE = "https://mail.google.com/"; // required for IMAP XOAUTH2
 
 /**
  * Interactive OAuth consent for a gmail source. The user supplies their own
- * OAuth client (Desktop type): bridgehead is self-hosted, so shipping a shared
+ * OAuth client (Desktop type): wakewire is self-hosted, so shipping a shared
  * client id would put every user behind Google's restricted-scope app
  * verification. A personal client in test mode works immediately.
  */
@@ -28,7 +28,7 @@ export async function authGmail(
       sourceId = gmailSources[0]?.id;
     } else if (gmailSources.length === 0) {
       console.error(
-        "No gmail source configured yet. Create one first (from Codex: bridge_source_setup_gmail, or POST /api/sources/gmail/setup).",
+        "No gmail source configured yet. Create one first (from Codex: wakewire_source_setup_gmail, or POST /api/sources/gmail/setup).",
       );
       process.exitCode = 1;
       return;
@@ -81,7 +81,7 @@ export async function authGmail(
     await apiFetch(`/api/sources/${sourceId}/restart`, { method: "POST" });
     console.log("Daemon notified — the gmail source is (re)starting.");
   } catch {
-    console.log("Daemon not running; the source will start with the next `bridgehead start`.");
+    console.log("Daemon not running; the source will start with the next `wakewire start`.");
   }
 }
 
@@ -118,8 +118,8 @@ function receiveAuthCode(
         res.writeHead(200, { "content-type": "text/plain" });
         res.end(
           code
-            ? "bridgehead: Gmail authorization received. You can close this tab."
-            : `bridgehead: authorization failed: ${error ?? "no code"}`,
+            ? "wakewire: Gmail authorization received. You can close this tab."
+            : `wakewire: authorization failed: ${error ?? "no code"}`,
         );
         server.close();
         if (code) {

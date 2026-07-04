@@ -7,7 +7,7 @@ import { matchRoutes } from "../core/router.js";
 import { openDatabase } from "../db/db.js";
 import { createStores, type Stores } from "../db/repos.js";
 import type { Logger } from "../logging.js";
-import { bridgeheadHome, stateFilePath } from "../paths.js";
+import { stateFilePath, wakewireHome } from "../paths.js";
 import { createSecretStore } from "../secrets/store.js";
 import { createAdapter } from "../sinks/factory.js";
 import { prepareWorktree } from "../sinks/worktree.js";
@@ -33,7 +33,7 @@ export class Daemon {
   constructor(private readonly logger: Logger) {}
 
   async start(): Promise<DaemonState> {
-    fs.mkdirSync(bridgeheadHome(), { recursive: true });
+    fs.mkdirSync(wakewireHome(), { recursive: true });
     this.db = openDatabase();
     const stores = createStores(this.db);
     this.stores = stores;
@@ -98,7 +98,7 @@ export class Daemon {
 
     this.logger.info(
       { port, adapter: adapter.name, version: VERSION },
-      "bridgehead daemon ready on 127.0.0.1",
+      "wakewire daemon ready on 127.0.0.1",
     );
     return state;
   }

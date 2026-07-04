@@ -51,7 +51,9 @@ describe("JsonRpcWs", () => {
   it("rejects pending requests and fires onClose when the socket drops", async () => {
     const url = await startServer(() => {
       // never reply; kill the connection instead
-      setTimeout(() => server?.clients.forEach((c) => c.terminate()), 50);
+      setTimeout(() => {
+        for (const c of server?.clients ?? []) c.terminate();
+      }, 50);
     });
     client = new JsonRpcWs(url, logger);
     client.start();

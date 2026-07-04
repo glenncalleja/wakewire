@@ -14,7 +14,7 @@ export interface CodexAppServerAdapterConfig {
   connection?: "auto" | "proxy" | "spawn" | undefined;
   /**
    * Shared-server mode: a LOOPBACK ws:// URL (e.g. ws://127.0.0.1:4571).
-   * bridgehead connects to an app-server there — spawning one itself if none
+   * wakewire connects to an app-server there — spawning one itself if none
    * is listening — and any `codex --remote <url>` TUI can attach to the same
    * server, seeing injected turns stream live. Takes precedence over
    * `connection` when set.
@@ -22,7 +22,7 @@ export interface CodexAppServerAdapterConfig {
   listenUrl?: string | undefined;
 }
 
-const CLIENT_INFO = { name: "bridgehead", title: "Bridgehead", version: "0.1.0" };
+const CLIENT_INFO = { name: "wakewire", title: "WakeWire", version: "0.1.0" };
 
 interface ThreadResumeResponse {
   thread: { id: string; status?: { type: string } };
@@ -247,7 +247,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
     rpc.onClose = (err) => this.failAllWaiters(err);
     rpc.onRequest = (method) => {
       this.logger.warn({ method }, "declining unexpected app-server request");
-      return { errorMessage: "bridgehead runs unattended and declines interactive requests" };
+      return { errorMessage: "wakewire runs unattended and declines interactive requests" };
     };
     try {
       await rpc.request("initialize", { clientInfo: CLIENT_INFO, capabilities: null }, 15_000);

@@ -1,11 +1,11 @@
 {
-  "name": "bridgehead-marketplace",
+  "name": "wakewire-marketplace",
   "interface": {
-    "displayName": "Bridgehead"
+    "displayName": "WakeWire"
   },
   "plugins": [
     {
-      "name": "bridgehead",
+      "name": "wakewire",
       "source": {
         "source": "local",
         "path": "./plugin"

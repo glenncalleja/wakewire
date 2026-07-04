@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "../../core/event.js";
+import type { WakeEvent } from "../../core/event.js";
 
 const TEXT_LIMIT = 4_000;
 
@@ -12,12 +12,12 @@ export interface SlackNames {
  * need. Like every source: nothing outside this trimmed shape reaches the
  * model, and message text is capped.
  */
-export function slackToBridgeEvent(args: {
+export function slackToWakeEvent(args: {
   event: Record<string, unknown>;
   eventId: string;
   teamId: string | undefined;
   names: SlackNames;
-}): BridgeEvent | null {
+}): WakeEvent | null {
   const { event, eventId, teamId, names } = args;
   const type = str(event.type);
   if (!type) return null;

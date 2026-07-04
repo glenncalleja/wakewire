@@ -15,7 +15,7 @@ export interface SecretStore {
   delete(name: string): void;
 }
 
-const SERVICE = "bridgehead";
+const SERVICE = "wakewire";
 
 class KeychainSecretStore implements SecretStore {
   readonly backend = "keychain" as const;
@@ -89,7 +89,7 @@ export async function createSecretStore(logger: Logger): Promise<SecretStore> {
     const store = new KeychainSecretStore((service, name) => new Entry(service, name));
     // Round-trip probe: some Linux environments load the module but have no
     // usable secret service.
-    const probeName = "__bridgehead_probe__";
+    const probeName = "__wakewire_probe__";
     store.set(probeName, "ok");
     const ok = store.get(probeName) === "ok";
     store.delete(probeName);

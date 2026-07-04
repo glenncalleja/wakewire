@@ -23,7 +23,7 @@ export async function authSlack(
       sourceId = candidates[0]?.id;
     } else if (candidates.length === 0) {
       console.error(
-        "No slack source configured yet. Create one first (from Codex: bridge_source_setup_slack).",
+        "No slack source configured yet. Create one first (from Codex: wakewire_source_setup_slack).",
       );
       process.exitCode = 1;
       return;
@@ -70,6 +70,6 @@ export async function authSlack(
     await apiFetch(`/api/sources/${sourceId}/restart`, { method: "POST" });
     console.log("Daemon notified — the slack source is (re)starting.");
   } catch {
-    console.log("Daemon not running; the source will start with the next `bridgehead start`.");
+    console.log("Daemon not running; the source will start with the next `wakewire start`.");
   }
 }

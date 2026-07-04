@@ -7,7 +7,7 @@ import { stateFilePath } from "./paths.js";
 export class DaemonNotRunningError extends Error {
   constructor(detail = "") {
     super(
-      `bridgehead daemon is not running${detail ? ` (${detail})` : ""}. Start it with: bridgehead start`,
+      `wakewire daemon is not running${detail ? ` (${detail})` : ""}. Start it with: wakewire start`,
     );
   }
 }

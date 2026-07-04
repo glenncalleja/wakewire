@@ -11,23 +11,23 @@ import { VERSION } from "../version.js";
  * of the daemon's localhost API — all state lives in the daemon.
  */
 export async function runMcpServer(): Promise<void> {
-  const server = new McpServer({ name: "bridgehead", version: VERSION });
+  const server = new McpServer({ name: "wakewire", version: VERSION });
 
   server.registerTool(
-    "bridge_status",
+    "wakewire_status",
     {
-      title: "Bridgehead status",
+      title: "WakeWire status",
       description:
-        "Health of the bridgehead daemon: sources, queue depth, and whether Codex is reachable.",
+        "Health of the wakewire daemon: sources, queue depth, and whether Codex is reachable.",
       inputSchema: {},
     },
     async () => call("GET", "/api/health"),
   );
 
   server.registerTool(
-    "bridge_route_add",
+    "wakewire_route_add",
     {
-      title: "Add a bridgehead route",
+      title: "Add a wakewire route",
       description:
         "Create a route that delivers matching external events into a Codex thread. " +
         'For GitHub, match is like {"repo":"owner/repo","events":["push"],"branches":["main"]}. ' +
@@ -83,7 +83,7 @@ export async function runMcpServer(): Promise<void> {
             "Do this now:",
             '1. Run this shell command in this conversation: echo "$CODEX_THREAD_ID"',
             "   (Codex exposes the current thread id to shell commands.)",
-            '2. Call bridge_route_add again with target {"type":"thread","threadId":"<the value>"}.',
+            '2. Call wakewire_route_add again with target {"type":"thread","threadId":"<the value>"}.',
           ].join("\n"),
         );
       }
@@ -115,9 +115,9 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_route_list",
+    "wakewire_route_list",
     {
-      title: "List bridgehead routes",
+      title: "List wakewire routes",
       description:
         "List all configured routes with their ids, matches, targets, and enabled state.",
       inputSchema: {},
@@ -126,9 +126,9 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_route_remove",
+    "wakewire_route_remove",
     {
-      title: "Remove a bridgehead route",
+      title: "Remove a wakewire route",
       description: "Delete a route (and its delivery history) by id.",
       inputSchema: { id: z.string().min(1) },
     },
@@ -136,9 +136,9 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_route_toggle",
+    "wakewire_route_toggle",
     {
-      title: "Enable/disable a bridgehead route",
+      title: "Enable/disable a wakewire route",
       description: "Toggle a route on or off without deleting it.",
       inputSchema: { id: z.string().min(1), enabled: z.boolean() },
     },
@@ -147,9 +147,9 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_deliveries",
+    "wakewire_deliveries",
     {
-      title: "Inspect bridgehead deliveries",
+      title: "Inspect wakewire deliveries",
       description:
         "The event inspector: recent deliveries with status (queued, delivered, failed, held, " +
         "skipped-duplicate, coalesced), errors, and the rendered prompts.",
@@ -181,9 +181,9 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_replay",
+    "wakewire_replay",
     {
-      title: "Replay a bridgehead delivery",
+      title: "Replay a wakewire delivery",
       description:
         "Re-render a past delivery against the route's current template and enqueue it again.",
       inputSchema: { deliveryId: z.string().min(1) },
@@ -193,7 +193,7 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_source_setup_github",
+    "wakewire_source_setup_github",
     {
       title: "Set up the GitHub event source",
       description:
@@ -215,7 +215,7 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_source_setup_webhook",
+    "wakewire_source_setup_webhook",
     {
       title: "Set up a generic webhook source",
       description:
@@ -224,7 +224,7 @@ export async function runMcpServer(): Promise<void> {
         'header, optional prefix like "sha256=") or secret-header (shared secret sent verbatim). ' +
         "The field mapping doubles as the payload whitelist — only mapped fields reach the model. " +
         "Workflow for a new provider: 1) call this without a mapping (capture mode stores the next " +
-        "few raw events), 2) trigger a test event, 3) inspect it with bridge_source_captures, " +
+        "few raw events), 2) trigger a test event, 3) inspect it with wakewire_source_captures, " +
         '4) call this again with the mapping you authored, 5) add a route with source "webhook" ' +
         'and match {"provider": "<name>"}.',
       inputSchema: {
@@ -253,12 +253,12 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_source_captures",
+    "wakewire_source_captures",
     {
       title: "Inspect captured webhook payloads",
       description:
         "Raw payloads captured while a webhook source is in capture mode — read one to author " +
-        "the field mapping for bridge_source_setup_webhook.",
+        "the field mapping for wakewire_source_setup_webhook.",
       inputSchema: {
         sourceId: z.string().min(1),
         limit: z.number().int().positive().max(10).optional(),
@@ -271,13 +271,13 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_source_setup_slack",
+    "wakewire_source_setup_slack",
     {
       title: "Set up the Slack event source",
       description:
         "Register a Slack workspace watch over Socket Mode (outbound WebSocket — no public URL). " +
         "Returns the one-time Slack app setup steps; the tokens themselves are stored in a " +
-        "terminal via `bridgehead auth slack`, never through this conversation.",
+        "terminal via `wakewire auth slack`, never through this conversation.",
       inputSchema: {
         team: z
           .string()
@@ -293,25 +293,25 @@ export async function runMcpServer(): Promise<void> {
   );
 
   server.registerTool(
-    "bridge_source_remove",
+    "wakewire_source_remove",
     {
-      title: "Remove a bridgehead source",
+      title: "Remove a wakewire source",
       description:
-        "Stop and delete an event source by id (see bridge_status for ids). Also removes its stored secrets.",
+        "Stop and delete an event source by id (see wakewire_status for ids). Also removes its stored secrets.",
       inputSchema: { id: z.string().min(1) },
     },
     async ({ id }) => call("DELETE", `/api/sources/${encodeURIComponent(id)}`),
   );
 
   server.registerTool(
-    "bridge_source_setup_gmail",
+    "wakewire_source_setup_gmail",
     {
       title: "Set up the Gmail/IMAP event source",
       description:
         "Register a mail label watch and return setup instructions. Two auth options: " +
         '"gmail-oauth" (default — user brings their own Google OAuth client, then runs ' +
-        '`bridgehead auth gmail`) or "imap-password" (a Gmail app password or any IMAP ' +
-        "server's password, then `bridgehead auth imap` — simpler, no OAuth client needed).",
+        '`wakewire auth gmail`) or "imap-password" (a Gmail app password or any IMAP ' +
+        "server's password, then `wakewire auth imap` — simpler, no OAuth client needed).",
       inputSchema: {
         label: z.string().min(1).describe("Label/folder to watch, e.g. agent-inbox"),
         user: z.string().email().describe("Mail address"),
@@ -346,10 +346,10 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
       return text(
-        `${err.message}\nIf bridgehead is not installed: npm install -g bridgehead && bridgehead init && bridgehead start`,
+        `${err.message}\nIf wakewire is not installed: npm install -g wakewire && wakewire init && wakewire start`,
       );
     }
-    return text(`bridgehead error: ${err instanceof Error ? err.message : String(err)}`);
+    return text(`wakewire error: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

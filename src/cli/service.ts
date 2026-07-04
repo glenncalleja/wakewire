@@ -7,7 +7,7 @@ import { logsDir } from "../paths.js";
 
 const execFileAsync = promisify(execFile);
 
-const LAUNCHD_LABEL = "io.bridgehead.daemon";
+const LAUNCHD_LABEL = "io.wakewire.daemon";
 
 /**
  * launchd (macOS) / systemd user unit (Linux) registration so the daemon
@@ -27,18 +27,18 @@ export async function installService(cliPath: string): Promise<void> {
   }
   if (process.platform === "linux") {
     const unitDir = path.join(os.homedir(), ".config", "systemd", "user");
-    const unit = path.join(unitDir, "bridgehead.service");
+    const unit = path.join(unitDir, "wakewire.service");
     fs.mkdirSync(unitDir, { recursive: true });
     fs.writeFileSync(unit, systemdUnit(cliPath));
     console.log(`Wrote ${unit}`);
     console.log(
-      "Enable it with:\n  systemctl --user daemon-reload && systemctl --user enable --now bridgehead",
+      "Enable it with:\n  systemctl --user daemon-reload && systemctl --user enable --now wakewire",
     );
     return;
   }
   console.log(
-    "No service wrapper for this platform in v1. Run `bridgehead start` in a terminal, " +
-      "or on Windows use NSSM: nssm install bridgehead <node> <cli.js> start",
+    "No service wrapper for this platform in v1. Run `wakewire start` in a terminal, " +
+      "or on Windows use NSSM: nssm install wakewire <node> <cli.js> start",
   );
 }
 
@@ -51,8 +51,8 @@ export async function uninstallService(): Promise<void> {
     return;
   }
   if (process.platform === "linux") {
-    const unit = path.join(os.homedir(), ".config", "systemd", "user", "bridgehead.service");
-    await execFileAsync("systemctl", ["--user", "disable", "--now", "bridgehead"]).catch(
+    const unit = path.join(os.homedir(), ".config", "systemd", "user", "wakewire.service");
+    await execFileAsync("systemctl", ["--user", "disable", "--now", "wakewire"]).catch(
       () => undefined,
     );
     fs.rmSync(unit, { force: true });
@@ -87,7 +87,7 @@ function launchdPlist(cliPath: string): string {
 
 function systemdUnit(cliPath: string): string {
   return `[Unit]
-Description=bridgehead - push external events into Codex threads
+Description=wakewire - push external events into Codex threads
 After=network-online.target
 
 [Service]

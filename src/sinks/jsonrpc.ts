@@ -113,7 +113,7 @@ abstract class JsonRpcPeer implements JsonRpcConnection {
       const handler = this.onRequest;
       const outcome = handler
         ? handler(message.method, message.params)
-        : { errorMessage: "bridgehead does not handle interactive requests" };
+        : { errorMessage: "wakewire does not handle interactive requests" };
       if (outcome.errorMessage !== undefined) {
         this.send({ id: message.id, error: { code: -32601, message: outcome.errorMessage } });
       } else {

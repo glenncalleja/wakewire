@@ -14,7 +14,7 @@ export interface DeliveryResult {
 }
 
 /**
- * The one seam between bridgehead and any coding agent. v1 ships Codex
+ * The one seam between wakewire and any coding agent. v1 ships Codex
  * implementations only; a Claude Code adapter would implement this interface.
  */
 export interface AgentAdapter {

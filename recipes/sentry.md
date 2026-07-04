@@ -10,7 +10,7 @@ Create the source first in capture mode to see your org's exact payload shape,
 then apply a mapping like:
 
 ```json
-bridge_source_setup_webhook {
+wakewire_source_setup_webhook {
   "name": "sentry",
   "verification": { "kind": "hmac-sha256", "header": "sentry-hook-signature" },
   "mapping": {
@@ -37,13 +37,13 @@ Webhook URL to the `webhookUrl` from step 1, enable "Issue & Event" webhooks.
 Sentry issues its own Client Secret — store it instead of the generated one:
 
 ```bash
-bridgehead auth webhook --source webhook-sentry
+wakewire auth webhook --source webhook-sentry
 ```
 
 ## 3. Route
 
 ```json
-bridge_route_add {
+wakewire_route_add {
   "name": "sentry errors",
   "source": "webhook",
   "match": { "provider": "sentry", "where": [{ "field": "level", "equals": "error" }] },

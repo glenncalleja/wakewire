@@ -7,7 +7,7 @@ export type Logger = pino.Logger;
 
 /** Pretty logs on a TTY (CLI use), JSON to file for the daemon. */
 export function createLogger(opts: { daemon?: boolean; level?: string } = {}): Logger {
-  const level = opts.level ?? process.env.BRIDGEHEAD_LOG_LEVEL ?? "info";
+  const level = opts.level ?? process.env.WAKEWIRE_LOG_LEVEL ?? "info";
   if (opts.daemon) {
     fs.mkdirSync(logsDir(), { recursive: true });
     const fileDest = pino.destination({ dest: logFilePath(), mkdir: true, sync: false });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 import { DEFAULT_TEMPLATES, renderTemplate, TemplateError, templateFields } from "./template.js";
 
-const githubEvent: BridgeEvent = {
+const githubEvent: WakeEvent = {
   source: "github",
   kind: "push",
   deliveryId: "d-1",
@@ -36,7 +36,7 @@ describe("templateFields", () => {
   });
 
   it("skips whitelisted fields with non-scalar values", () => {
-    const event: BridgeEvent = { ...githubEvent, payload: { repo: { evil: true } } };
+    const event: WakeEvent = { ...githubEvent, payload: { repo: { evil: true } } };
     const fields = templateFields("r", event);
     expect(fields).not.toHaveProperty("repo");
   });
@@ -61,7 +61,7 @@ describe("renderTemplate", () => {
   });
 
   it("sanitizes attacker-controlled field values before they reach instructions", () => {
-    const evil: BridgeEvent = {
+    const evil: WakeEvent = {
       source: "gmail",
       kind: "email",
       deliveryId: "<m@x>",
@@ -87,7 +87,7 @@ describe("renderTemplate", () => {
   });
 
   it("caps very long field values", () => {
-    const event: BridgeEvent = {
+    const event: WakeEvent = {
       source: "github",
       kind: "push",
       deliveryId: "d",
@@ -107,7 +107,7 @@ describe("renderTemplate", () => {
     expect(() =>
       renderTemplate(DEFAULT_TEMPLATES.github, templateFields("r", githubEvent)),
     ).not.toThrow();
-    const gmailEvent: BridgeEvent = {
+    const gmailEvent: WakeEvent = {
       source: "gmail",
       kind: "email",
       deliveryId: "<m@x>",

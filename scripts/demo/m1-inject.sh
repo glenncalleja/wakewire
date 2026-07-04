@@ -8,11 +8,11 @@
 set -euo pipefail
 
 THREAD_ID="${1:?usage: m1-inject.sh <threadId> [prompt]}"
-PROMPT="${2:-hello from bridgehead}"
-STATE_FILE="${BRIDGEHEAD_HOME:-$HOME/.bridgehead}/daemon.json"
+PROMPT="${2:-hello from wakewire}"
+STATE_FILE="${WAKEWIRE_HOME:-$HOME/.wakewire}/daemon.json"
 
 if [[ ! -f "$STATE_FILE" ]]; then
-  echo "daemon not running (no $STATE_FILE) — run: bridgehead start --detach" >&2
+  echo "daemon not running (no $STATE_FILE) — run: wakewire start --detach" >&2
   exit 1
 fi
 

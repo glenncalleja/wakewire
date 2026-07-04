@@ -1,6 +1,6 @@
 # Security notes
 
-bridgehead's job is to feed **untrusted external content** (webhook payloads,
+wakewire's job is to feed **untrusted external content** (webhook payloads,
 emails) to an **agent that can run code**. That combination is the whole threat
 model. These are the mitigations and the residual risks — read them before
 enabling `workspace-write` on anything.
@@ -23,7 +23,7 @@ enabling `workspace-write` on anything.
   instruction block. Those values are attacker-controlled, so before
   interpolation they are sanitized: whitespace/newlines collapsed to single
   spaces, the literal envelope markers ("INSTRUCTIONS", "UNTRUSTED EVENT DATA",
-  "</…", "[bridgehead …]") defanged, and length capped. A value therefore cannot
+  "</…", "[wakewire …]") defanged, and length capped. A value therefore cannot
   forge the trusted/untrusted structure — though the same text still appears,
   correctly, inside the fenced block.
 - Rate-limit digest turns render event summaries as plain text inside the fence;
@@ -48,7 +48,7 @@ enabling `workspace-write` on anything.
 ## Management API
 
 - Bearer token (32 random bytes) generated on first run, stored in
-  `~/.bridgehead/state.db` and `~/.bridgehead/daemon.json` (both 0600). Constant
+  `~/.wakewire/state.db` and `~/.wakewire/daemon.json` (both 0600). Constant
   compare on every request. The API grants injection into your Codex threads —
   treat the token like a shell on your machine.
 
@@ -56,7 +56,7 @@ enabling `workspace-write` on anything.
 
 - Webhook secrets, OAuth client credentials, refresh tokens, and IMAP passwords go
   to the OS keychain (via `@napi-rs/keyring`) when available; otherwise to
-  `~/.bridgehead/secrets.json` (0600) with a loud warning in the logs.
+  `~/.wakewire/secrets.json` (0600) with a loud warning in the logs.
 - Secrets are never logged and never returned by the API after setup time.
 
 ## Generic webhook specifics
@@ -107,12 +107,12 @@ enabling `workspace-write` on anything.
 - Gmail: a label is required; you cannot watch a whole inbox.
 - Rate limit: 10 deliveries/minute per route, then coalescing into digest turns —
   a hostile webhook flood becomes one summarizing turn, not a hundred agent runs.
-- bridgehead never reads or writes Codex's internal SQLite state; it only uses
+- wakewire never reads or writes Codex's internal SQLite state; it only uses
   documented CLI/SDK/app-server surfaces.
 
 ## Reporting
 
 Open a GitHub security advisory or email the maintainer. Please don't file prompt
-injection *model* behaviors as bridgehead vulnerabilities unless the envelope
+injection *model* behaviors as wakewire vulnerabilities unless the envelope
 itself is bypassed (e.g. you can smuggle a literal `</event>` or reach the
 instruction block from payload content) — those we absolutely want to hear about.

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { z } from "zod";
-import type { BridgeEvent } from "../../core/event.js";
+import type { WakeEvent } from "../../core/event.js";
 
 const FIELD_VALUE_LIMIT = 2_000;
 
@@ -65,7 +65,7 @@ export function mapWebhookEvent(args: {
   rawBody: string;
   /** Value of mapping.deliveryIdHeader, resolved by the source. */
   headerDeliveryId?: string | undefined;
-}): BridgeEvent {
+}): WakeEvent {
   const { provider, mapping, body, rawBody, headerDeliveryId } = args;
   const kind = scalarAt(body, mapping?.kind) || "event";
   const deliveryId =

@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 
 /**
  * Tiny mustache-style interpolation over a whitelist of summary fields.
@@ -15,7 +15,7 @@ const COMMON_FIELDS = [
   "summary",
 ] as const;
 
-const SOURCE_FIELDS: Record<BridgeEvent["source"], readonly string[]> = {
+const SOURCE_FIELDS: Record<WakeEvent["source"], readonly string[]> = {
   github: [
     "repo",
     "branch",
@@ -37,7 +37,7 @@ const SOURCE_FIELDS: Record<BridgeEvent["source"], readonly string[]> = {
 
 export class TemplateError extends Error {}
 
-export function allowedFields(source: BridgeEvent["source"]): string[] {
+export function allowedFields(source: WakeEvent["source"]): string[] {
   return [...COMMON_FIELDS, ...SOURCE_FIELDS[source]];
 }
 
@@ -56,13 +56,13 @@ export function sanitizeFieldValue(value: string): string {
   return value
     .replace(/[\s]+/g, " ")
     .replaceAll("</", "<​/") // defang a fence-closing "</event>"
-    .replace(/INSTRUCTIONS\b|UNTRUSTED EVENT DATA|\[bridgehead (event|digest)\]/gi, "[…]")
+    .replace(/INSTRUCTIONS\b|UNTRUSTED EVENT DATA|\[wakewire (event|digest)\]/gi, "[…]")
     .trim()
     .slice(0, FIELD_MAX);
 }
 
 /** Build the whitelisted field map for an event. Payload values beyond the whitelist never leak in. */
-export function templateFields(routeName: string, event: BridgeEvent): Record<string, string> {
+export function templateFields(routeName: string, event: WakeEvent): Record<string, string> {
   // routeName is operator-authored (trusted); everything else is event-derived
   // and gets sanitized before it can reach the instruction block.
   const fields: Record<string, string> = {
@@ -95,7 +95,7 @@ export function renderTemplate(template: string, fields: Record<string, string>)
   });
 }
 
-export const DEFAULT_TEMPLATES: Record<BridgeEvent["source"], string> = {
+export const DEFAULT_TEMPLATES: Record<WakeEvent["source"], string> = {
   github:
     "A GitHub {{kind}} event arrived for {{repo}}: {{summary}}. " +
     "Review the event data below and summarize what changed and whether anything needs attention.",

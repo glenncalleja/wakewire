@@ -1,14 +1,14 @@
-import type { BridgeEvent } from "./event.js";
+import type { WakeEvent } from "./event.js";
 import type { GithubMatch, GmailMatch, Route, SlackMatch, WebhookMatch } from "./route.js";
 
 /** Returns the enabled routes whose match rules accept this event. */
-export function matchRoutes(routes: Route[], event: BridgeEvent): Route[] {
+export function matchRoutes(routes: Route[], event: WakeEvent): Route[] {
   return routes.filter(
     (route) => route.enabled && route.source === event.source && matches(route, event),
   );
 }
 
-function matches(route: Route, event: BridgeEvent): boolean {
+function matches(route: Route, event: WakeEvent): boolean {
   switch (route.source) {
     case "github":
       return matchGithub(route.match as GithubMatch, event);
@@ -23,7 +23,7 @@ function matches(route: Route, event: BridgeEvent): boolean {
   }
 }
 
-function matchWebhook(match: WebhookMatch, event: BridgeEvent): boolean {
+function matchWebhook(match: WebhookMatch, event: WakeEvent): boolean {
   const provider = str(event.payload.provider);
   if (!match.provider || provider.toLowerCase() !== match.provider.toLowerCase()) return false;
 
@@ -43,7 +43,7 @@ function matchWebhook(match: WebhookMatch, event: BridgeEvent): boolean {
   return true;
 }
 
-function matchSlack(match: SlackMatch, event: BridgeEvent): boolean {
+function matchSlack(match: SlackMatch, event: WakeEvent): boolean {
   // route "message" matches kind "message.channel_topic"; exact kinds match exactly.
   // Defensive default: rows stored before match normalization may lack events.
   const events = match.events ?? ["app_mention"];
@@ -86,7 +86,7 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function matchGithub(match: GithubMatch, event: BridgeEvent): boolean {
+function matchGithub(match: GithubMatch, event: WakeEvent): boolean {
   const repo = event.payload.repo;
   if (typeof repo !== "string" || repo.toLowerCase() !== match.repo.toLowerCase()) return false;
 
@@ -105,7 +105,7 @@ function matchGithub(match: GithubMatch, event: BridgeEvent): boolean {
   return true;
 }
 
-function matchGmail(match: GmailMatch, event: BridgeEvent): boolean {
+function matchGmail(match: GmailMatch, event: WakeEvent): boolean {
   if (event.kind !== "email") return false;
   const label = event.payload.label;
   if (typeof label !== "string" || label.toLowerCase() !== match.label.toLowerCase()) return false;

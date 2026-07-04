@@ -15,30 +15,30 @@ import { openDatabase } from "./db/db.js";
 import { createStores } from "./db/repos.js";
 import { createLogger } from "./logging.js";
 import { runMcpServer } from "./mcp/server.js";
-import { bridgeheadHome, logFilePath, stateFilePath } from "./paths.js";
+import { logFilePath, stateFilePath, wakewireHome } from "./paths.js";
 import { VERSION } from "./version.js";
 
 const cliPath = fileURLToPath(import.meta.url);
 const program = new Command();
 
 program
-  .name("bridgehead")
+  .name("wakewire")
   .description("Push external events (GitHub, Gmail) into local Codex threads")
   .version(VERSION);
 
 program
   .command("init")
-  .description("Create ~/.bridgehead, run migrations, and generate the API token")
+  .description("Create ~/.wakewire, run migrations, and generate the API token")
   .action(() => {
-    fs.mkdirSync(bridgeheadHome(), { recursive: true });
+    fs.mkdirSync(wakewireHome(), { recursive: true });
     const db = openDatabase();
     const stores = createStores(db);
     loadConfig(stores.settings); // generates the API token on first run
     db.close();
-    console.log(`Initialized ${bridgeheadHome()}`);
+    console.log(`Initialized ${wakewireHome()}`);
     console.log("Next steps:");
-    console.log("  1. bridgehead start            # or: bridgehead service install");
-    console.log("  2. Install the Codex plugin (see README) and say: $bridge-setup");
+    console.log("  1. wakewire start            # or: wakewire service install");
+    console.log("  2. Install the Codex plugin (see README) and say: $wakewire-setup");
   });
 
 program
@@ -115,7 +115,7 @@ const auth = program.command("auth").description("Authenticate event sources");
 auth
   .command("gmail")
   .description("Run the Google OAuth flow for a gmail source")
-  .option("--source <id>", "gmail source id (from bridge_source_setup_gmail)")
+  .option("--source <id>", "gmail source id (from wakewire_source_setup_gmail)")
   .option("--client-id <id>", "Google OAuth client id")
   .option("--client-secret <secret>", "Google OAuth client secret")
   .action(async (opts: { source?: string; clientId?: string; clientSecret?: string }) => {
@@ -128,7 +128,7 @@ auth
   )
   .option(
     "--source <id>",
-    'source id (from bridge_source_setup_gmail with authKind "imap-password")',
+    'source id (from wakewire_source_setup_gmail with authKind "imap-password")',
   )
   .option(
     "--password <password>",
@@ -140,7 +140,7 @@ auth
 auth
   .command("slack")
   .description("Store the Socket Mode tokens for a slack source (app-level xapp- and bot xoxb-)")
-  .option("--source <id>", "slack source id (from bridge_source_setup_slack)")
+  .option("--source <id>", "slack source id (from wakewire_source_setup_slack)")
   .option("--app-token <token>", "app-level token (prefer the hidden prompt)")
   .option("--bot-token <token>", "bot token (prefer the hidden prompt)")
   .action(async (opts: { source?: string; appToken?: string; botToken?: string }) => {
@@ -149,7 +149,7 @@ auth
 auth
   .command("webhook")
   .description("Store a provider-issued signing secret for a generic webhook source")
-  .option("--source <id>", "webhook source id (from bridge_source_setup_webhook)")
+  .option("--source <id>", "webhook source id (from wakewire_source_setup_webhook)")
   .option("--secret <secret>", "provide non-interactively (prefer the hidden prompt)")
   .action(async (opts: { source?: string; secret?: string }) => {
     await authWebhook(createLogger(), opts);
@@ -171,7 +171,7 @@ service
 
 program
   .command("mcp")
-  .description("Run the bridgehead MCP server on stdio (used by the Codex plugin)")
+  .description("Run the wakewire MCP server on stdio (used by the Codex plugin)")
   .action(async () => {
     await runMcpServer();
   });

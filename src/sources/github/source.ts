@@ -162,7 +162,7 @@ function headerOf(message: SmeeMessage, name: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-/** Create a fresh smee.io channel (used by bridge_source_setup_github). */
+/** Create a fresh smee.io channel (used by wakewire_source_setup_github). */
 export async function createSmeeChannel(): Promise<string> {
   return SmeeClient.createChannel();
 }
