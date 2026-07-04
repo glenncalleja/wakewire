@@ -1,8 +1,9 @@
+import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Logger } from "../logging.js";
-import { JsonRpcChild, JsonRpcError } from "./jsonrpc.js";
+import { JsonRpcChild, type JsonRpcConnection, JsonRpcError, JsonRpcWs } from "./jsonrpc.js";
 import type { AgentAdapter, DeliveryOptions, DeliveryResult } from "./types.js";
 import { BusyError, PermanentError, UnreachableError } from "./types.js";
 
@@ -11,6 +12,14 @@ export interface CodexAppServerAdapterConfig {
   model?: string | undefined;
   /** Force "proxy" (attach to running app-server) or "spawn" (own instance). Default: auto. */
   connection?: "auto" | "proxy" | "spawn" | undefined;
+  /**
+   * Shared-server mode: a LOOPBACK ws:// URL (e.g. ws://127.0.0.1:4571).
+   * bridgehead connects to an app-server there — spawning one itself if none
+   * is listening — and any `codex --remote <url>` TUI can attach to the same
+   * server, seeing injected turns stream live. Takes precedence over
+   * `connection` when set.
+   */
+  listenUrl?: string | undefined;
 }
 
 const CLIENT_INFO = { name: "bridgehead", title: "Bridgehead", version: "0.1.0" };
@@ -55,12 +64,14 @@ const TURN_COMPLETION_TIMEOUT_MS = 30 * 60_000;
  * Raw JSON-RPC sink against `codex app-server` (v2 protocol, JSONL framing,
  * verified against codex-cli 0.142.0 generated bindings).
  *
- * Connection strategy: if the app-server control socket exists
- * ($CODEX_HOME/app-server-control/app-server-control.sock), spawn
- * `codex app-server proxy` to attach to the RUNNING server — injected turns
- * then stream live into any client of that server. Otherwise spawn a private
- * `codex app-server`; turns are persisted to the shared session store and
- * appear when the thread is next loaded elsewhere.
+ * Connection strategy, in order:
+ * - listenUrl set → shared-ws mode: connect to (or spawn) a shared
+ *   `codex app-server --listen ws://127.0.0.1:PORT`. Any `codex --remote`
+ *   TUI attached to the same URL sees injected turns stream LIVE, and busy
+ *   detection covers every client of that server.
+ * - control socket exists → `codex app-server proxy` to the managed daemon.
+ * - otherwise → spawn a private stdio `codex app-server`; turns persist to the
+ *   shared session store and appear when the thread is next loaded elsewhere.
  *
  * Like the SDK/exec adapters it waits for the turn to finish (via the
  * turn/completed notification) so the queue's per-thread FIFO stays clean, but
@@ -70,8 +81,10 @@ const TURN_COMPLETION_TIMEOUT_MS = 30 * 60_000;
  */
 export class CodexAppServerAdapter implements AgentAdapter {
   readonly name = "codex-app-server";
-  private connection: JsonRpcChild | null = null;
-  private initializing: Promise<JsonRpcChild> | null = null;
+  private connection: JsonRpcConnection | null = null;
+  private initializing: Promise<JsonRpcConnection> | null = null;
+  /** Child handle when we spawned the shared ws server ourselves. */
+  private sharedServer: ChildProcess | null = null;
   /** One turn per thread (guaranteed by BusyError), so key completion waiters by threadId. */
   private readonly turnWaiters = new Map<string, TurnWaiter>();
   /**
@@ -119,7 +132,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
    * SDK and exec adapters.
    */
   private async runTurn(
-    rpc: JsonRpcChild,
+    rpc: JsonRpcConnection,
     threadId: string,
     prompt: string,
     opts: DeliveryOptions,
@@ -212,9 +225,11 @@ export class CodexAppServerAdapter implements AgentAdapter {
     this.failAllWaiters(new UnreachableError("adapter closed"));
     this.connection?.stop();
     this.connection = null;
+    this.sharedServer?.kill();
+    this.sharedServer = null;
   }
 
-  private async connect(): Promise<JsonRpcChild> {
+  private async connect(): Promise<JsonRpcConnection> {
     if (this.connection?.alive) return this.connection;
     if (this.initializing) return this.initializing;
     this.initializing = this.doConnect().finally(() => {
@@ -223,14 +238,11 @@ export class CodexAppServerAdapter implements AgentAdapter {
     return this.initializing;
   }
 
-  private async doConnect(): Promise<JsonRpcChild> {
+  private async doConnect(): Promise<JsonRpcConnection> {
     this.connection?.stop();
-    const bin = this.config.codexPath ?? "codex";
-    const mode = this.resolveConnectionMode();
-    const args = mode === "proxy" ? ["app-server", "proxy"] : ["app-server"];
-    this.logger.info({ mode }, "connecting to codex app-server");
-
-    const rpc = new JsonRpcChild(bin, args, this.logger);
+    const rpc = this.config.listenUrl
+      ? await this.openSharedWs(this.config.listenUrl)
+      : this.openStdio();
     rpc.onNotification = (method, params) => this.handleNotification(method, params);
     rpc.onClose = (err) => this.failAllWaiters(err);
     rpc.onRequest = (method) => {
@@ -238,17 +250,83 @@ export class CodexAppServerAdapter implements AgentAdapter {
       return { errorMessage: "bridgehead runs unattended and declines interactive requests" };
     };
     try {
-      rpc.start();
       await rpc.request("initialize", { clientInfo: CLIENT_INFO, capabilities: null }, 15_000);
       rpc.notify("initialized", {});
     } catch (err) {
       rpc.stop();
       throw new UnreachableError(
-        `cannot connect to codex app-server (${mode}): ${err instanceof Error ? err.message : err}`,
+        `cannot connect to codex app-server: ${err instanceof Error ? err.message : err}`,
       );
     }
     this.connection = rpc;
     return rpc;
+  }
+
+  private openStdio(): JsonRpcConnection {
+    const bin = this.config.codexPath ?? "codex";
+    const mode = this.resolveConnectionMode();
+    const args = mode === "proxy" ? ["app-server", "proxy"] : ["app-server"];
+    this.logger.info({ mode }, "connecting to codex app-server");
+    const rpc = new JsonRpcChild(bin, args, this.logger);
+    rpc.start();
+    return rpc;
+  }
+
+  /**
+   * Shared-server mode: connect to the ws URL, spawning
+   * `codex app-server --listen <url>` first if nothing answers. The server is
+   * shared — `codex --remote <url>` TUIs attach to it and see injected turns
+   * stream live. Loopback only: a ws listener has no auth on loopback, so a
+   * non-loopback URL would expose an unauthenticated Codex control plane.
+   */
+  private async openSharedWs(url: string): Promise<JsonRpcConnection> {
+    assertLoopbackWsUrl(url);
+    const attempt = async (timeoutMs: number) => {
+      const ws = new JsonRpcWs(url, this.logger);
+      ws.start();
+      await ws.waitOpen(timeoutMs);
+      return ws;
+    };
+    try {
+      const ws = await attempt(1_500);
+      this.logger.info(
+        { mode: "shared-ws", url, spawned: false },
+        "connecting to codex app-server",
+      );
+      return ws;
+    } catch {
+      // nothing listening — spawn the shared server and retry
+    }
+    if (!this.sharedServer || this.sharedServer.exitCode !== null) {
+      const bin = this.config.codexPath ?? "codex";
+      this.logger.info(
+        { mode: "shared-ws", url, spawned: true },
+        "starting shared codex app-server",
+      );
+      const child = spawn(bin, ["app-server", "--listen", url], {
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        this.logger.debug({ stderr: chunk.toString().trim() }, "shared app-server stderr");
+      });
+      child.on("close", (code) => {
+        this.logger.warn({ code }, "shared app-server exited");
+      });
+      this.sharedServer = child;
+    }
+    const deadline = Date.now() + 10_000;
+    let lastErr: unknown;
+    while (Date.now() < deadline) {
+      try {
+        return await attempt(1_500);
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
+    throw new UnreachableError(
+      `shared app-server at ${url} did not become reachable: ${lastErr instanceof Error ? lastErr.message : lastErr}`,
+    );
   }
 
   private resolveConnectionMode(): "proxy" | "spawn" {
@@ -257,7 +335,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
     return fs.existsSync(controlSocketPath()) ? "proxy" : "spawn";
   }
 
-  private async call<T>(rpc: JsonRpcChild, method: string, params: unknown): Promise<T> {
+  private async call<T>(rpc: JsonRpcConnection, method: string, params: unknown): Promise<T> {
     try {
       return await rpc.request<T>(method, params);
     } catch (err) {
@@ -301,6 +379,23 @@ function sandboxPolicyFor(opts: DeliveryOptions) {
     };
   }
   return { type: "readOnly", networkAccess: false };
+}
+
+export function assertLoopbackWsUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new PermanentError(`invalid appServerListen URL: ${url}`);
+  }
+  const host = parsed.hostname.toLowerCase();
+  const loopback =
+    host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+  if (parsed.protocol !== "ws:" || !loopback || !parsed.port) {
+    throw new PermanentError(
+      `appServerListen must be a loopback ws:// URL with a port (e.g. ws://127.0.0.1:4571) — a non-loopback listener would expose an unauthenticated Codex control plane`,
+    );
+  }
 }
 
 function controlSocketPath(): string {

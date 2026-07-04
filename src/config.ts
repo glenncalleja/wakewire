@@ -10,6 +10,8 @@ export interface DaemonConfig {
   codexPath: string | undefined;
   model: string | undefined;
   appServerConnection: "auto" | "proxy" | "spawn";
+  /** Loopback ws:// URL for shared-server mode (codex --remote TUIs attach to it). */
+  appServerListen: string | undefined;
   ratePerMinute: number;
   /** 0 = pick a random free port and record it in the state file. */
   apiPort: number;
@@ -21,6 +23,7 @@ export const settingKeys = {
   codexPath: "sink.codexPath",
   model: "sink.model",
   appServerConnection: "sink.appServerConnection",
+  appServerListen: "sink.appServerListen",
   ratePerMinute: "queue.ratePerMinute",
   apiPort: "api.port",
   apiToken: "api.token",
@@ -41,6 +44,7 @@ export function loadConfig(settings: SettingsStore): DaemonConfig {
     codexPath: settings.get(settingKeys.codexPath) ?? undefined,
     model: settings.get(settingKeys.model) ?? undefined,
     appServerConnection: connection,
+    appServerListen: settings.get(settingKeys.appServerListen) ?? undefined,
     ratePerMinute: Number.isFinite(rate) && rate > 0 ? rate : 10,
     apiPort: Number.isFinite(port) && port >= 0 ? port : 0,
     apiToken: settings.getOrCreate(settingKeys.apiToken, () =>

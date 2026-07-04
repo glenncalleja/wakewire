@@ -59,7 +59,20 @@ skills, mcp, config-reference).
    Connection death rejects in-flight waiters (UnreachableError → queue retries).
    Live-verified on codex-cli 0.142.0 (spawn mode): block-to-completion,
    finalResponse extraction, and BusyError-on-concurrent-turn all confirmed.
-   Still unverified: proxy mode (needs the desktop app-server socket present).
+   Proxy mode dead-end + shared-ws mode (2026-07-04): the desktop app runs its
+   own embedded `app-server --listen stdio://`, so no external process can
+   attach to it (live in-app refresh is impossible until OpenAI rewires the app
+   to the managed daemon; `codex app-server daemon` also requires their
+   standalone installer). Cross-process busy detection is likewise limited to
+   clients of the same server process. The answer is shared-ws mode
+   (`sink.appServerListen = ws://127.0.0.1:PORT`): the adapter connects to — or
+   spawns and owns — a shared `codex app-server --listen ws://…`, and any
+   `codex --remote <url>` TUI attaches to the same server. Loopback-only is
+   enforced (a ws listener has no auth on loopback; non-loopback would expose an
+   unauthenticated Codex control plane). Live-verified end to end on the real
+   daemon: a watcher client on the shared server received turn/started,
+   agentMessage deltas, and turn/completed for a queue-replayed gmail delivery —
+   live streaming AND whole-server busy detection both real in this topology.
 3. **Live-refresh behavior (M1 observation).** Officially undocumented. Smoke-tested
    on 2026-07-03 against codex-cli 0.142.0 (ChatGPT auth): injecting via the daemon's
    `/api/inject` with the default SDK adapter ran the turn to completion

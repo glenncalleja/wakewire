@@ -1,10 +1,12 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import readline from "node:readline";
+import WebSocket from "ws";
 import type { Logger } from "../logging.js";
 
 /**
- * Minimal JSON-RPC client over a child process's stdio using the codex
- * app-server framing: newline-delimited JSON with the `jsonrpc` field omitted.
+ * Minimal JSON-RPC client for the codex app-server: messages are JSON objects
+ * with the `jsonrpc` field omitted. Two transports share one dispatch core:
+ * JSONL over a child process's stdio, and one-message-per-frame WebSocket.
  */
 
 export class JsonRpcError extends Error {
@@ -23,11 +25,23 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 
-export class JsonRpcChild {
-  private child: ChildProcessWithoutNullStreams | null = null;
+export interface JsonRpcConnection {
+  readonly alive: boolean;
+  onNotification: ((method: string, params: unknown) => void) | null;
+  onClose: ((err: Error) => void) | null;
+  onRequest:
+    | ((method: string, params: unknown) => { result?: unknown; errorMessage?: string })
+    | null;
+  start(): void;
+  stop(): void;
+  request<T>(method: string, params: unknown, timeoutMs?: number): Promise<T>;
+  notify(method: string, params: unknown): void;
+}
+
+abstract class JsonRpcPeer implements JsonRpcConnection {
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();
-  private exited = false;
+  protected exited = false;
 
   onNotification: ((method: string, params: unknown) => void) | null = null;
   /** Invoked once when the connection dies, so callers can fail long-lived waits. */
@@ -37,49 +51,15 @@ export class JsonRpcChild {
     | ((method: string, params: unknown) => { result?: unknown; errorMessage?: string })
     | null = null;
 
-  constructor(
-    private readonly command: string,
-    private readonly args: string[],
-    private readonly logger: Logger,
-  ) {}
+  constructor(protected readonly logger: Logger) {}
 
-  get alive(): boolean {
-    return this.child !== null && !this.exited;
-  }
-
-  start(): void {
-    const child = spawn(this.command, this.args, { stdio: ["pipe", "pipe", "pipe"] });
-    this.child = child;
-    this.exited = false;
-
-    const rl = readline.createInterface({ input: child.stdout });
-    rl.on("line", (line) => this.handleLine(line));
-    child.stderr.on("data", (chunk: Buffer) => {
-      this.logger.debug({ stderr: chunk.toString().trim() }, "app-server stderr");
-    });
-    child.on("error", (err) => {
-      this.exited = true;
-      const e = err instanceof Error ? err : new Error(String(err));
-      this.failAll(e);
-      this.onClose?.(e);
-    });
-    child.on("close", (code) => {
-      this.exited = true;
-      const e = new Error(`app-server process exited with code ${code}`);
-      this.failAll(e);
-      this.onClose?.(e);
-    });
-  }
-
-  stop(): void {
-    this.child?.kill();
-    this.child = null;
-    this.exited = true;
-  }
+  abstract get alive(): boolean;
+  abstract start(): void;
+  abstract stop(): void;
+  protected abstract send(message: Record<string, unknown>): void;
 
   request<T>(method: string, params: unknown, timeoutMs = 60_000): Promise<T> {
-    const child = this.child;
-    if (!child || this.exited) {
+    if (!this.alive) {
       return Promise.reject(new Error("app-server connection is not open"));
     }
     const id = this.nextId++;
@@ -93,28 +73,23 @@ export class JsonRpcChild {
         reject,
         timer,
       });
-      this.write({ id, method, params });
+      this.send({ id, method, params });
     });
   }
 
   notify(method: string, params: unknown): void {
-    this.write({ method, params });
+    if (!this.alive) return;
+    this.send({ method, params });
   }
 
-  private write(message: Record<string, unknown>): void {
-    const child = this.child;
-    if (!child || this.exited) return;
-    child.stdin.write(`${JSON.stringify(message)}\n`);
-  }
-
-  private handleLine(line: string): void {
-    const trimmed = line.trim();
+  protected handleRaw(raw: string): void {
+    const trimmed = raw.trim();
     if (!trimmed) return;
     let message: Record<string, unknown>;
     try {
       message = JSON.parse(trimmed);
     } catch {
-      this.logger.debug({ line: trimmed.slice(0, 200) }, "non-JSON line from app-server");
+      this.logger.debug({ raw: trimmed.slice(0, 200) }, "non-JSON message from app-server");
       return;
     }
 
@@ -140,9 +115,9 @@ export class JsonRpcChild {
         ? handler(message.method, message.params)
         : { errorMessage: "bridgehead does not handle interactive requests" };
       if (outcome.errorMessage !== undefined) {
-        this.write({ id: message.id, error: { code: -32601, message: outcome.errorMessage } });
+        this.send({ id: message.id, error: { code: -32601, message: outcome.errorMessage } });
       } else {
-        this.write({ id: message.id, result: outcome.result ?? null });
+        this.send({ id: message.id, result: outcome.result ?? null });
       }
       return;
     }
@@ -152,11 +127,127 @@ export class JsonRpcChild {
     }
   }
 
-  private failAll(err: Error): void {
+  protected fail(err: Error): void {
+    this.exited = true;
     for (const [, pending] of this.pending) {
       clearTimeout(pending.timer);
       pending.reject(err);
     }
     this.pending.clear();
+    this.onClose?.(err);
+  }
+}
+
+/** JSONL over a spawned child's stdio (`codex app-server` / `codex app-server proxy`). */
+export class JsonRpcChild extends JsonRpcPeer {
+  private child: ChildProcessWithoutNullStreams | null = null;
+
+  constructor(
+    private readonly command: string,
+    private readonly args: string[],
+    logger: Logger,
+  ) {
+    super(logger);
+  }
+
+  override get alive(): boolean {
+    return this.child !== null && !this.exited;
+  }
+
+  override start(): void {
+    const child = spawn(this.command, this.args, { stdio: ["pipe", "pipe", "pipe"] });
+    this.child = child;
+    this.exited = false;
+
+    const rl = readline.createInterface({ input: child.stdout });
+    rl.on("line", (line) => this.handleRaw(line));
+    child.stderr.on("data", (chunk: Buffer) => {
+      this.logger.debug({ stderr: chunk.toString().trim() }, "app-server stderr");
+    });
+    child.on("error", (err) => {
+      this.fail(err instanceof Error ? err : new Error(String(err)));
+    });
+    child.on("close", (code) => {
+      this.fail(new Error(`app-server process exited with code ${code}`));
+    });
+  }
+
+  override stop(): void {
+    this.child?.kill();
+    this.child = null;
+    this.exited = true;
+  }
+
+  protected override send(message: Record<string, unknown>): void {
+    const child = this.child;
+    if (!child || this.exited) return;
+    child.stdin.write(`${JSON.stringify(message)}\n`);
+  }
+}
+
+/** One JSON message per frame over a WebSocket (`codex app-server --listen ws://…`). */
+export class JsonRpcWs extends JsonRpcPeer {
+  private ws: WebSocket | null = null;
+  private opened = false;
+
+  constructor(
+    private readonly url: string,
+    logger: Logger,
+  ) {
+    super(logger);
+  }
+
+  override get alive(): boolean {
+    return this.ws !== null && this.opened && !this.exited;
+  }
+
+  override start(): void {
+    const ws = new WebSocket(this.url);
+    this.ws = ws;
+    this.exited = false;
+    ws.on("message", (data) => this.handleRaw(data.toString()));
+    ws.on("error", (err) => {
+      this.fail(err instanceof Error ? err : new Error(String(err)));
+    });
+    ws.on("close", () => {
+      this.fail(new Error("app-server websocket closed"));
+    });
+  }
+
+  /** Resolves once the socket is open (or rejects on failure). */
+  waitOpen(timeoutMs = 5_000): Promise<void> {
+    const ws = this.ws;
+    if (!ws) return Promise.reject(new Error("not started"));
+    if (ws.readyState === WebSocket.OPEN) {
+      this.opened = true;
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("websocket open timed out")), timeoutMs);
+      ws.once("open", () => {
+        clearTimeout(timer);
+        this.opened = true;
+        resolve();
+      });
+      ws.once("error", (err) => {
+        clearTimeout(timer);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      });
+    });
+  }
+
+  override stop(): void {
+    try {
+      this.ws?.close();
+    } catch {
+      // already closed
+    }
+    this.ws = null;
+    this.exited = true;
+  }
+
+  protected override send(message: Record<string, unknown>): void {
+    if (!this.alive) return;
+    this.ws?.send(JSON.stringify(message));
   }
 }

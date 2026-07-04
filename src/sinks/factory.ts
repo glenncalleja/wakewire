@@ -12,6 +12,7 @@ export function createAdapter(config: DaemonConfig, logger: Logger): AgentAdapte
         codexPath: config.codexPath,
         model: config.model,
         connection: config.appServerConnection,
+        listenUrl: config.appServerListen,
       });
     case "codex-exec":
       return new CodexExecAdapter(logger, {
