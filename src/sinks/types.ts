@@ -25,6 +25,8 @@ export interface AgentAdapter {
   startThread(prompt: string, opts: DeliveryOptions): Promise<DeliveryResult>;
   /** Cheap reachability check — used to decide held-vs-failed and for status reporting. */
   probe(): Promise<boolean>;
+  /** Release connections/child processes on daemon shutdown. */
+  close?(): void;
 }
 
 /** The target thread has a turn in flight. Retry later; never a failure. */

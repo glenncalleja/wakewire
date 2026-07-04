@@ -28,6 +28,7 @@ export class Daemon {
   private queue: DeliveryQueue | null = null;
   private sources: SourceManager | null = null;
   private server: Server | null = null;
+  private adapter: import("../sinks/types.js").AgentAdapter | null = null;
   private db: ReturnType<typeof openDatabase> | null = null;
 
   constructor(private readonly logger: Logger) {}
@@ -40,6 +41,7 @@ export class Daemon {
     const config = loadConfig(stores.settings);
     const secrets = await createSecretStore(this.logger);
     const adapter = createAdapter(config, this.logger);
+    this.adapter = adapter;
 
     const queue = new DeliveryQueue(stores, adapter, this.logger, {
       ratePerMinute: config.ratePerMinute,
@@ -107,6 +109,9 @@ export class Daemon {
     this.logger.info("daemon shutting down");
     this.queue?.stop();
     await this.sources?.stopAll();
+    // Kills adapter connections AND any shared app-server child it owns —
+    // otherwise the hard exit below orphans the spawned server.
+    this.adapter?.close?.();
     await new Promise<void>((resolve) => {
       if (!this.server) return resolve();
       this.server.close(() => resolve());
