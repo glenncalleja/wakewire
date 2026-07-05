@@ -39,9 +39,21 @@ enabling `workspace-write` on anything.
 
 - GitHub signatures (HMAC-SHA256, `X-Hub-Signature-256`) are verified even in smee
   relay mode; unsigned or mis-signed deliveries are rejected and counted.
-- smee.io is a public relay: anyone with your channel URL can *read* payloads
-  transiting it and *send* you garbage (which fails signature verification). For
-  private repos, prefer `mode: "listen"` behind your own tunnel/reverse proxy.
+- smee.io is a **development relay, not for real use** (GitHub says the same of it
+  and of its own `gh webhook forward`). Two exposures HMAC does *not* fix: anyone
+  with the channel URL can **read every payload in flight** — the raw, untrimmed
+  body, before WakeWire's field mapping narrows it, so private-repo commits, Linear
+  issue text, or secret-bearing Sentry stack traces would leak; and smee does not
+  queue, so an event passing through while the daemon is down or reconnecting is
+  **silently lost** (GitHub saw a 200 and won't redeliver). The durable queue only
+  protects events *after* they reach the daemon. For anything private or
+  loss-sensitive, use `mode: "listen"` behind your own tunnel (Cloudflare Tunnel /
+  Tailscale Funnel / TLS reverse proxy) — direct ingress also closes the drop gap,
+  since GitHub then retries on connection failure. See docs/setup.md.
+- **Not yet implemented (hardening backlog):** GitHub publishes its webhook source
+  IP ranges (`/meta`, `hooks` element); `listen`-mode ingress could allowlist them
+  as defense-in-depth. HMAC is the load-bearing control and is enforced today; the
+  IP check would be a cheap extra for internet-exposed ingress.
 - The webhook listener and management API bind `127.0.0.1` only. There is
   deliberately no flag in v1 to bind wider — bring your own tunnel.
 

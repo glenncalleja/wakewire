@@ -72,9 +72,56 @@ least *pushes*), Add webhook.
 **3. Test** — push a commit. Within seconds a turn appears. GitHub's signature is
 verified even over the relay.
 
-For a private repo you'd rather not relay through smee.io, ask for
-`mode: "listen"` instead and point your own tunnel at
-`/ingress/github/<sourceId>`.
+### Choosing an ingress: smee vs listen
+
+The default `smee` mode relays webhooks through the public **smee.io** service so
+you need no open ports. **This is a development/testing tool — not for real use.**
+GitHub says so about smee in its own docs ("never use Smee for an application in
+production... not authenticated or secure... no guarantee of availability"), and
+labels its own `gh webhook forward` dev-only too. smee has three properties to
+understand:
+
+- **Authenticity — covered.** Anyone with the channel URL can POST junk, but
+  WakeWire verifies the HMAC signature (even over the relay), so forged payloads
+  are rejected with 401.
+- **Confidentiality — NOT covered.** Anyone with the channel URL can *read every
+  payload in flight*, and they see the **raw, untrimmed** body — before WakeWire's
+  field mapping narrows it. For public-repo push events (already public) this costs
+  nothing. For a **private repo, a real Linear workspace, or Sentry** (stack traces
+  routinely leak tokens/PII), it is a genuine leak.
+- **Reliability — NOT covered.** smee doesn't queue — it forwards to whoever is
+  connected *right now*. If the daemon is down or reconnecting when an event passes
+  through, that event is **lost**, and GitHub saw a 200 so it won't redeliver.
+  WakeWire's durable queue only protects events *after* they reach the daemon.
+
+**Rule of thumb: smee for testing and already-public content; `listen` mode for
+anything private or anything you can't afford to silently lose.**
+
+### `listen` mode (the real-use path)
+
+Ask setup for `mode: "listen"` and WakeWire accepts webhooks directly on
+`/ingress/github/<sourceId>` — no third-party relay. Put your own ingress in front
+of the daemon; direct ingress also fixes the reliability gap (if the daemon is
+down, GitHub gets a connection error and retries on its own schedule). This is the
+same architecture GitHub's own "delivering webhooks to private systems" guidance
+recommends: a real endpoint, HTTPS, HMAC in the app, dedup by delivery id — all of
+which WakeWire already does. What you add is the public hop:
+
+- **Cloudflare Tunnel** or **Tailscale Funnel** — stable hostname + TLS, no inbound
+  ports opened. Best fit for a persistent local/homelab daemon.
+- An authenticated **ngrok** domain, or exposing the port behind your own TLS
+  reverse proxy (nginx/Caddy/Traefik) if the box has a real address.
+
+Point the tunnel at the daemon's management port and set the GitHub webhook's
+Payload URL to `https://<your-tunnel-host>/ingress/github/<sourceId>`. HMAC
+verification is doing the security work here, so keep the secret strong. (This path
+is verified locally — a signed POST straight to `/ingress/...` — but the tunnel hop
+itself is your infra to stand up and test.)
+
+> The same smee-vs-listen choice applies to the **generic webhook** source
+> (Linear, Sentry, ClickUp, …) via `/ingress/webhook/<sourceId>` — and matters
+> *more* there, since issue trackers and error monitors carry more sensitive
+> payloads than public-repo pushes.
 
 ---
 

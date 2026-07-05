@@ -175,6 +175,19 @@ skills, mcp, config-reference).
 
 ## Deliberately deferred
 
+### GitHub IP allowlist on listen-mode ingress (backlog, 2026-07-05)
+
+Peers (and GitHub's own "delivering webhooks to private systems" guidance)
+optionally allowlist GitHub's published webhook source IP ranges (`/meta`, the
+`hooks` element) at the reverse proxy / app. WakeWire relies on HMAC alone, which
+is the load-bearing authenticity control and is enforced. An IP allowlist on
+`/ingress/*` in listen mode would be cheap defense-in-depth for internet-exposed
+ingress (reject before signature check, cut noise). Deferred — HMAC is
+sufficient for correctness; this is hardening, and the ranges must be refreshed
+from `/meta` periodically, which is the only real cost.
+
+
+
 ### Write-capable email routes (deferred 2026-07-04)
 
 Gmail routes are forced `read-only`. This deliberately blocks a legitimate use
