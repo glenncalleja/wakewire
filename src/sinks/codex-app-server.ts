@@ -22,7 +22,7 @@ export interface CodexAppServerAdapterConfig {
   listenUrl?: string | undefined;
 }
 
-const CLIENT_INFO = { name: "wakewire", title: "WakeWire", version: "0.1.0" };
+const CLIENT_INFO = { name: "wakewire", title: "WakeWire", version: "0.0.1" };
 
 interface ThreadResumeResponse {
   thread: { id: string; status?: { type: string } };

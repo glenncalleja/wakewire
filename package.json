@@ -1,6 +1,6 @@
 {
   "name": "wakewire",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Break the loop \u2014 GitHub, Gmail, Slack, and any webhook (Linear, Sentry, ClickUp) pushed straight into your local Codex threads, no polling.",
   "keywords": [
     "agent",
@@ -77,5 +77,6 @@
     "tsx": "^4.22.5",
     "typescript": "^5.9.3",
     "vitest": "^4.1.9"
-  }
+  },
+  "author": "Glenn Calleja Frendo"
 }
