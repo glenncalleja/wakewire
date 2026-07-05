@@ -78,7 +78,14 @@ export function mapWebhookEvent(args: {
   const fields: Record<string, string> = {};
   for (const [alias, path] of Object.entries(mapping?.fields ?? {})) {
     const value = valueAt(body, path);
-    if (value === undefined || value === null) continue;
+    // Declared aliases ALWAYS exist (empty when absent): the template
+    // whitelist is the payload's keys, so a field that vanishes on events
+    // that lack it (e.g. an unassigned issue) would make {{alias}} an
+    // unknown-field hard error only for those events.
+    if (value === undefined || value === null) {
+      fields[alias] = "";
+      continue;
+    }
     const text =
       typeof value === "object"
         ? JSON.stringify(value)

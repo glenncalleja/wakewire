@@ -105,6 +105,16 @@ describe("mapWebhookEvent", () => {
     expect(event.payload.provider).toBe("sentry");
   });
 
+  it("declared aliases always exist, empty when the path is absent (regression: unassigned Linear issue failed {{assignee}} templates)", () => {
+    const event = mapWebhookEvent({
+      provider: "linear",
+      mapping: { fields: { title: "data.title", assignee: "data.assignee.name" } },
+      body: { data: { title: "Test Task" } }, // no assignee on this event
+      rawBody: "{}",
+    });
+    expect(event.payload).toEqual({ title: "Test Task", assignee: "", provider: "linear" });
+  });
+
   it("survives with no mapping at all (capture-mode events still flow)", () => {
     const event = mapWebhookEvent({
       provider: "grafana",
