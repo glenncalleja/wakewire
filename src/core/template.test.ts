@@ -105,9 +105,19 @@ describe("renderTemplate", () => {
       deliveryId: "Ev1",
       occurredAt: "t",
       summary: "s",
-      payload: { channel: "C1", channelName: "dev", user: "U1", userName: "g", ts: "123.45", threadTs: "120.00" },
+      payload: {
+        channel: "C1",
+        channelName: "dev",
+        user: "U1",
+        userName: "g",
+        ts: "123.45",
+        threadTs: "120.00",
+      },
     };
-    const out = renderTemplate("msg {{ts}} in thread {{threadTs}}", templateFields("r", slackEvent));
+    const out = renderTemplate(
+      "msg {{ts}} in thread {{threadTs}}",
+      templateFields("r", slackEvent),
+    );
     expect(out).toBe("msg 123.45 in thread 120.00");
   });
 

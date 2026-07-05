@@ -155,7 +155,12 @@ export function createApi(ctx: ApiContext): Hono {
     const sourceId = deterministicSourceId("github", parsed.data.repo ?? "default");
     const existing = ctx.stores.sources.get(sourceId);
 
-    const secret = crypto.randomBytes(24).toString("hex");
+    // Preserve the existing secret on re-setup (same rule as the generic
+    // webhook source): a repeated setup call must not silently invalidate the
+    // secret the user already pasted into GitHub.
+    let secret = ctx.secrets.get(secretNames.githubWebhookSecret(sourceId));
+    const isNewSecret = !secret;
+    if (!secret) secret = crypto.randomBytes(24).toString("hex");
     let smeeUrl: string | undefined;
     if (parsed.data.mode === "smee") {
       const existingUrl = existing?.config.smeeUrl;
@@ -183,7 +188,7 @@ export function createApi(ctx: ApiContext): Hono {
         ...(parsed.data.repo ? { repo: parsed.data.repo } : {}),
       },
     });
-    ctx.secrets.set(secretNames.githubWebhookSecret(record.id), secret);
+    if (isNewSecret) ctx.secrets.set(secretNames.githubWebhookSecret(record.id), secret);
     await ctx.sources.restart(record.id);
 
     const payloadUrl = smeeUrl ?? `http://127.0.0.1:<your-tunnel>/ingress/github/${record.id}`;
@@ -197,7 +202,7 @@ export function createApi(ctx: ApiContext): Hono {
           `1. Open https://github.com/${parsed.data.repo ?? "<owner>/<repo>"}/settings/hooks/new`,
           `2. Payload URL: ${payloadUrl}`,
           "3. Content type: application/json",
-          `4. Secret: ${secret}`,
+          `4. Secret: ${secret}${isNewSecret ? "" : " (unchanged from previous setup)"}`,
           "5. Choose the events to send (at least: pushes), then Add webhook.",
           "6. GitHub sends a ping — check wakewire_status / GET /api/sources to confirm receipt.",
         ],
