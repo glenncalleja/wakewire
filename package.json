@@ -29,6 +29,7 @@
     "dist",
     "plugin",
     "recipes",
+    "docs",
     "README.md",
     "SECURITY.md",
     "LICENSE"

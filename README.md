@@ -47,6 +47,9 @@ thread id, creating a smee.io relay channel, giving you the webhook URL + secret
 to paste into GitHub, and adding the route. Test it with a push — the turn should
 arrive within seconds.
 
+**For step-by-step setup of each source — with the exact terminal commands and
+copy-paste Codex prompts — see [docs/setup.md](docs/setup.md).**
+
 For Gmail: label-based watching over IMAP IDLE, with two auth options — a Gmail
 app password (`wakewire auth imap`, simplest; also works for any other IMAP
 server) or your own Google OAuth client (`wakewire auth gmail`, Desktop type —
