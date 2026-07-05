@@ -6,32 +6,31 @@ import { Terminal, Typewriter, FadeIn } from "./primitives";
 /* ── Scene 1: the polling-loop pain ───────────────────────────────── */
 export const ScenePain: React.FC = () => {
   const frame = useCurrentFrame();
-  // a loop that re-runs the same check every "30s", finding nothing
-  const ticks = Math.floor(frame / 22);
+  // three poll iterations land in the first ~1.5s, then the loop idles
+  const iters = Math.min(3, Math.floor(frame / 15) + 1);
   const lines: string[] = [];
-  for (let i = 0; i < Math.min(ticks, 5); i++) {
+  for (let i = 0; i < iters; i++) {
     lines.push(`$ check-for-new-events.sh        # polling every 30s`);
     lines.push(`  …nothing. sleeping 30s`);
   }
+  const blink = Math.floor(frame / 15) % 2 === 0;
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Terminal title="your agent, on a timer" style={{ width: 1180, height: 560 }}>
-        <div style={{ fontSize: 26, lineHeight: 1.7, color: C.dim }}>
+      <Terminal title="your agent, on a timer" style={{ width: 1180, height: 600 }}>
+        <div style={{ fontSize: 26, lineHeight: 1.75 }}>
           {lines.map((l, i) => (
             <div key={i} style={{ color: l.startsWith("$") ? C.text : C.dim }}>
               {l}
             </div>
           ))}
-          {ticks < 6 && (
-            <div style={{ color: C.text }}>
-              $ check-for-new-events.sh
-              <span style={{ color: C.green }}>{Math.floor(frame / 15) % 2 ? "▋" : " "}</span>
-            </div>
-          )}
+          <div style={{ color: C.text }}>
+            $ check-for-new-events.sh <span style={{ color: C.green }}>{blink ? "▋" : " "}</span>
+          </div>
         </div>
-        <FadeIn start={128} style={{ position: "absolute", bottom: 30, left: 26 }}>
-          <span style={{ fontSize: 24, color: C.amber }}>
-            polling burns tokens, adds latency, and still misses things.
+        {/* punchline fades in early (~2s) and holds for the rest of the scene */}
+        <FadeIn start={58} style={{ position: "absolute", bottom: 34, left: 26 }}>
+          <span style={{ fontSize: 26, color: C.amber }}>
+            ↻ polling burns tokens, adds latency, and still misses things.
           </span>
         </FadeIn>
       </Terminal>
@@ -39,8 +38,11 @@ export const ScenePain: React.FC = () => {
   );
 };
 
-/* ── Scene 2: title reveal ────────────────────────────────────────── */
-export const SceneTitle: React.FC = () => {
+/* ── Scene 2 / outro: title card ──────────────────────────────────── */
+export const SceneTitle: React.FC<{ subtitle?: string; footer?: string }> = ({
+  subtitle = "push external events straight into your Codex threads — no polling",
+  footer,
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = spring({ frame, fps, config: { damping: 200 } });
@@ -78,13 +80,23 @@ export const SceneTitle: React.FC = () => {
         </div>
       </FadeIn>
       <FadeIn start={30}>
-        <div style={{ fontFamily: MONO, fontSize: 27, color: C.dim, marginTop: 10 }}>
-          push external events straight into your Codex threads — no polling
-        </div>
+        <div style={{ fontFamily: MONO, fontSize: 27, color: C.dim, marginTop: 10 }}>{subtitle}</div>
       </FadeIn>
+      {footer && (
+        <FadeIn start={46}>
+          <div style={{ fontFamily: MONO, fontSize: 26, color: C.text, marginTop: 18 }}>
+            <span style={{ color: C.green }}>$</span> {footer}
+          </div>
+        </FadeIn>
+      )}
     </div>
   );
 };
+
+/* closing reprise — same card, with the install line as the last thing on screen */
+export const SceneOutro: React.FC = () => (
+  <SceneTitle subtitle="GitHub · Gmail · Slack · any webhook → your agent" footer="npm install -g wakewire" />
+);
 
 /* ── Scene 3: the money shot — an email wakes the agent, streaming live ── */
 const AGENT_REPLY =
