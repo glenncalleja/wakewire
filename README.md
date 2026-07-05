@@ -116,7 +116,8 @@ A route = match + target + prompt template + sandbox.
   (`{type:"new-thread",cwd,worktree?}`; `worktree:true` runs each delivery in a
   detached git worktree under `~/.wakewire/worktrees`).
 - **Sandbox** — `read-only` (default, and forced for gmail) or `workspace-write`
-  (github routes, opt-in). Applied per injected turn.
+  (github/slack/webhook routes, opt-in — see SECURITY.md before enabling it on
+  sources whose content strangers can influence). Applied per injected turn.
 
 Deliveries are deduplicated by the source's delivery id, serialized per thread
 (never two turns in flight on one thread from wakewire), retried with capped
@@ -133,11 +134,14 @@ WakeWire talks to Codex through an adapter (config: settings key `sink.adapter`)
   the daemon* (with `approvalPolicy: never` and your route's sandbox), and shows up
   in the app when the thread is next opened/reloaded.
 - **`codex-app-server`** — speaks the app-server v2 JSON-RPC protocol
-  (`thread/resume` + `turn/start`). If Codex's app-server daemon socket exists, it
-  attaches to the *running* server via `codex app-server proxy`, so clients of that
-  server see the turn live; it can also detect a turn already in flight and back
-  off. The app-server surface is marked experimental by OpenAI — this adapter is
-  isolated behind the same interface and easy to update.
+  (`thread/resume` + `turn/start`) and can detect a turn already in flight on the
+  thread and back off. Its best trick is **shared-ws mode** (set
+  `sink.appServerListen` to e.g. `ws://127.0.0.1:4571`): wakewire runs a shared
+  app-server on a loopback WebSocket, and any `codex --remote ws://127.0.0.1:4571`
+  TUI attached to it sees injected turns **stream in live**, token by token. The
+  desktop app keeps its own embedded server, so it still shows turns on thread
+  reload only. The app-server surface is marked experimental by OpenAI — this
+  adapter is isolated behind the same interface and easy to update.
 - **`codex-exec`** — plain `codex exec` shell-out; maximum-compatibility fallback.
 
 Honest caveats: cross-client thread attachment is not officially documented by
