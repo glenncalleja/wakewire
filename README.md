@@ -1,6 +1,7 @@
 # wakewire
 
-**Break the loop.** GitHub, Gmail, and Slack events, pushed straight into your
+**Break the loop.** GitHub, Gmail, Slack — and anything with a webhook (Linear,
+Sentry, ClickUp, your CI) — pushed straight into your
 [Codex](https://developers.openai.com/codex) threads.
 
 No more agents polling on a timer: a webhook fires or an email lands, and seconds
@@ -11,6 +12,7 @@ data, under instructions you wrote.
  GitHub ──smee───▶ ┌──────────────────────────────────────────────┐
  Gmail ──IMAP───▶  │  wakewire daemon                             │
  Slack ──socket─▶  │  sources → router → queue → codex sink ──────┼──▶ Codex threads
+ anything ─hook─▶  │                                              │
                    │        └── delivery log (SQLite) ◀─┘         │
                    │  management API (127.0.0.1, bearer token)    │
                    └──────────────▲───────────────────────────────┘
