@@ -10,11 +10,7 @@ data, under instructions you wrote.
 
 ## Demo
 
-<!-- DEMO VIDEO: edit this file on github.com and drag video/out/wakewire-demo.mp4
-     (2.8 MB) right below this comment — GitHub uploads it and inserts a
-     github.com/user-attachments/assets/… URL, which renders as an inline player.
-     Keep the URL on its own line. Then delete this comment. -->
-
+https://github.com/user-attachments/assets/53eb2cd4-34d9-4ab6-851a-35b04aee2a88
 *(demo video — 33s: an email arrives and the agent's triage streams live into a
 Codex thread)*
 
