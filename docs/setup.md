@@ -28,7 +28,7 @@ codex plugin marketplace add ~/dev/loyale/wakewire
 ```
 
 Then in a `codex` CLI session, run `/plugins` → find **WakeWire** → Install →
-restart. (In the desktop app, use the Plugins screen in settings instead.) (If an
+restart. In the desktop app, use the Plugins screen in settings instead. (If an
 old "Bridgehead" entry is still listed, uninstall it.)
 
 ### How the model targets "this thread"
