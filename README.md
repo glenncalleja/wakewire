@@ -10,21 +10,7 @@ data, under instructions you wrote.
 
 ## Demo
 
-https://github.com/user-attachments/assets/53eb2cd4-34d9-4ab6-851a-35b04aee2a88
-*(demo video — 33s: an email arrives and the agent's triage streams live into a
-Codex thread)*
-
-```
- GitHub ──smee───▶ ┌──────────────────────────────────────────────┐
- Gmail ──IMAP───▶  │  wakewire daemon                             │
- Slack ──socket─▶  │  sources → router → queue → codex sink ──────┼──▶ Codex threads
- anything ─hook─▶  │                                              │
-                   │        └── delivery log (SQLite) ◀─┘         │
-                   │  management API (127.0.0.1, bearer token)    │
-                   └──────────────▲───────────────────────────────┘
-                                  │
-                    Codex plugin: MCP tools ($wakewire-setup, $wakewire-inspect)
-```
+https://github.com/user-attachments/assets/12a97aa5-47fd-43ef-9dcf-93b410d8a66e
 
 Everything runs on your machine. No cloud component, no web UI — you configure and
 inspect it conversationally from inside Codex.
