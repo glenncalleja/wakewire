@@ -78,5 +78,13 @@
     "typescript": "^5.9.3",
     "vitest": "^4.1.9"
   },
-  "author": "Glenn Calleja Frendo"
+  "author": "Glenn Calleja Frendo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glenncalleja/wakewire.git"
+  },
+  "homepage": "https://github.com/glenncalleja/wakewire#readme",
+  "bugs": {
+    "url": "https://github.com/glenncalleja/wakewire/issues"
+  }
 }

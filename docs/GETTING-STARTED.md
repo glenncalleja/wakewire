@@ -17,7 +17,7 @@ wakewire status                # expect adapter.codexReachable: true
 Install the Codex plugin:
 
 ```bash
-codex plugin marketplace add https://github.com/<you>/wakewire   # or a local checkout path
+codex plugin marketplace add https://github.com/glenncalleja/wakewire   # or a local checkout path
 ```
 
 then in Codex run `/plugins`, install **WakeWire**, restart Codex.

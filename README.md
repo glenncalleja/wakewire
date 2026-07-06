@@ -34,7 +34,7 @@ wakewire start --detach          # or: wakewire service install (launchd/systemd
 Install the Codex plugin:
 
 ```bash
-codex plugin marketplace add https://github.com/<you>/wakewire   # or a local checkout path
+codex plugin marketplace add https://github.com/glenncalleja/wakewire   # or a local checkout path
 # then inside Codex: /plugins → WakeWire → Install
 ```
 
