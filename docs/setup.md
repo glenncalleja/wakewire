@@ -27,7 +27,8 @@ Install the Codex plugin (once, and again after any rename):
 codex plugin marketplace add ~/dev/loyale/wakewire
 ```
 
-Then in Codex: `/plugins` → find **WakeWire** → Install → restart Codex. (If an
+Then in a `codex` CLI session, run `/plugins` → find **WakeWire** → Install →
+restart. (In the desktop app, use the Plugins screen in settings instead.) (If an
 old "Bridgehead" entry is still listed, uninstall it.)
 
 ### How the model targets "this thread"

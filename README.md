@@ -35,7 +35,8 @@ Install the Codex plugin:
 
 ```bash
 codex plugin marketplace add https://github.com/glenncalleja/wakewire   # or a local checkout path
-# then inside Codex: /plugins → WakeWire → Install
+# then start a `codex` CLI session and run /plugins → WakeWire → Install
+# (the desktop app has an equivalent Plugins screen in its settings)
 ```
 
 Then, in a Codex conversation:

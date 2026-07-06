@@ -20,7 +20,8 @@ Install the Codex plugin:
 codex plugin marketplace add https://github.com/glenncalleja/wakewire   # or a local checkout path
 ```
 
-then in Codex run `/plugins`, install **WakeWire**, restart Codex.
+then in a `codex` CLI session run `/plugins`, install **WakeWire**, and restart.
+(Desktop app: the Plugins screen in settings.)
 
 **Quick sanity check** — paste into any Codex conversation:
 
