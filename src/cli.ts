@@ -167,7 +167,7 @@ config
   .action((key: string) => configGet(key));
 config
   .command("set <key> <value>")
-  .description('Set a setting, e.g. wakewire config set sink.adapter codex-app-server')
+  .description("Set a setting, e.g. wakewire config set sink.adapter codex-app-server")
   .action(async (key: string, value: string) => {
     await configSet(key, value);
   });

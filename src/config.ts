@@ -30,8 +30,8 @@ export const settingKeys = {
 } as const;
 
 export function loadConfig(settings: SettingsStore): DaemonConfig {
-  const adapter = AdapterNameSchema.catch("codex-sdk").parse(
-    settings.get(settingKeys.adapter) ?? "codex-sdk",
+  const adapter = AdapterNameSchema.catch("codex-app-server").parse(
+    settings.get(settingKeys.adapter) ?? "codex-app-server",
   );
   const rate = Number(settings.get(settingKeys.ratePerMinute) ?? "10");
   const port = Number(settings.get(settingKeys.apiPort) ?? "0");

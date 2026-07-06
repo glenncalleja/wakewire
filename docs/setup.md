@@ -42,12 +42,10 @@ every event appends a turn.
 
 ### Watching turns arrive live (optional, opt-in)
 
-Live streaming requires the app-server adapter in shared-server mode — it is
-NOT on by default (the default `codex-sdk` adapter has no live view; turns
-appear when a thread is reopened). Enable it once:
+Live streaming needs one opt-in setting (the shared listen port is off by
+default — it exposes an unauthenticated loopback control plane for codex):
 
 ```bash
-wakewire config set sink.adapter codex-app-server
 wakewire config set sink.appServerListen ws://127.0.0.1:4571
 wakewire stop && wakewire start --detach
 ```

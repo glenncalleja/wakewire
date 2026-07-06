@@ -173,6 +173,17 @@ skills, mcp, config-reference).
     (entries migrated), env vars WAKEWIRE_*, MCP tools wakewire_*, skills
     $wakewire-setup / $wakewire-inspect. No back-compat shims: pre-publish.
 
+17. **Default adapter flipped to codex-app-server (2026-07-06, pre-publish).**
+    It is the most-verified sink (spawn + shared-ws live-tested end-to-end
+    through the production queue), has the BusyError in-flight guard, and
+    enables the live `codex --remote` view with a single further setting.
+    Trade-off accepted knowingly: it speaks an experimental protocol to the
+    *user's installed* codex (drift risk on codex updates), whereas codex-sdk
+    vendors its own binary and cannot drift — so codex-sdk is documented as the
+    one-command stability fallback (`wakewire config set sink.adapter
+    codex-sdk`). `sink.appServerListen` stays opt-in: on by default would open
+    an unauthenticated loopback codex control plane without consent.
+
 ## Deliberately deferred
 
 ### GitHub IP allowlist on listen-mode ingress (backlog, 2026-07-05)

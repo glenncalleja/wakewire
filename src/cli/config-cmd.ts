@@ -5,7 +5,7 @@ import { createStores } from "../db/repos.js";
 import { assertLoopbackWsUrl } from "../sinks/codex-app-server.js";
 
 const KNOWN: Record<string, string> = {
-  [settingKeys.adapter]: "codex sink: codex-sdk (default) | codex-app-server | codex-exec",
+  [settingKeys.adapter]: "codex sink: codex-app-server (default) | codex-sdk | codex-exec",
   [settingKeys.codexPath]: "override the codex binary path",
   [settingKeys.model]: "model override for injected turns",
   [settingKeys.appServerConnection]: "app-server connection: auto (default) | proxy | spawn",
@@ -68,7 +68,9 @@ export async function configSet(key: string, value: string): Promise<void> {
   console.log(`${key} = ${value}`);
   try {
     await apiFetch("/api/health");
-    console.log("Note: the daemon is running — restart it to apply: wakewire stop && wakewire start --detach");
+    console.log(
+      "Note: the daemon is running — restart it to apply: wakewire stop && wakewire start --detach",
+    );
   } catch {
     // daemon not running; new value applies on next start
   }

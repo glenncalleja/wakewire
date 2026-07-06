@@ -40,18 +40,18 @@ thread id, creating a smee.io relay channel, giving you the webhook URL + secret
 to paste into GitHub, and adding the route. Test it with a push — the turn should
 arrive within seconds.
 
-**Watch it live (opt-in):** switch to the app-server adapter in shared-server
-mode, and a `codex --remote` TUI streams injected turns in token-by-token:
+**Watch it live (one opt-in setting):** enable shared-server mode and a
+`codex --remote` TUI streams injected turns in token-by-token:
 
 ```bash
-wakewire config set sink.adapter codex-app-server
 wakewire config set sink.appServerListen ws://127.0.0.1:4571
 wakewire stop && wakewire start --detach
 codex --remote ws://127.0.0.1:4571      # open your target thread here
 ```
 
-On the default `codex-sdk` adapter there is no live view — injected turns appear
-in the desktop app or `codex resume` when the thread is next opened.
+Without it, injected turns appear in the desktop app or `codex resume` when the
+thread is next opened. (The listen port is off by default because it exposes an
+unauthenticated loopback control plane for codex — enable it knowingly.)
 
 **For step-by-step setup of each source — with the exact terminal commands and
 copy-paste Codex prompts — see [docs/setup.md](docs/setup.md).**
@@ -137,21 +137,22 @@ route exceeds its rate limit (default 10/minute).
 
 WakeWire talks to Codex through an adapter (config: settings key `sink.adapter`):
 
-- **`codex-sdk`** (default) — uses `@openai/codex-sdk`, which runs
-  `codex exec resume <threadId>` under the hood. Threads live in `~/.codex/sessions`,
-  shared with the CLI and desktop app. The injected turn *runs to completion inside
-  the daemon* (with `approvalPolicy: never` and your route's sandbox), and shows up
-  in the desktop app or `codex resume` when the thread is next opened.
-- **`codex-app-server`** — speaks the app-server v2 JSON-RPC protocol
+- **`codex-app-server`** (default) — speaks the app-server v2 JSON-RPC protocol
   (`thread/resume` + `turn/start`) and can detect a turn already in flight on the
   thread and back off. Its best trick is **shared-ws mode** (set
   `sink.appServerListen` to e.g. `ws://127.0.0.1:4571`): wakewire runs a shared
   app-server on a loopback WebSocket, and any `codex --remote ws://127.0.0.1:4571`
   TUI attached to it sees injected turns **stream in live**, token by token. The
   desktop app keeps its own embedded server, so it still shows turns on thread
-  reload only. The app-server surface is marked experimental by OpenAI — this
-  adapter is isolated behind the same interface and easy to update.
-- **`codex-exec`** — plain `codex exec` shell-out; maximum-compatibility fallback.
+  reload only. The app-server surface is marked experimental by OpenAI and this
+  adapter talks to *your installed* codex, so a codex update could break it —
+  if that happens, switch adapters with one command (below) and file an issue.
+- **`codex-sdk`** — uses `@openai/codex-sdk`, which runs `codex exec resume`
+  under the hood with its own *vendored* codex binary, so it can never drift out
+  of sync with a codex release. The stability fallback:
+  `wakewire config set sink.adapter codex-sdk` (then restart the daemon).
+- **`codex-exec`** — plain `codex exec` shell-out against your installed codex;
+  maximum-compatibility last resort.
 
 Honest caveats: cross-client thread attachment is not officially documented by
 OpenAI; with the default SDK adapter, an open thread in the desktop app won't
