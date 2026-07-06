@@ -47,6 +47,11 @@ thread id, creating a smee.io relay channel, giving you the webhook URL + secret
 to paste into GitHub, and adding the route. Test it with a push — the turn should
 arrive within seconds.
 
+**Watch it live:** `codex --remote ws://127.0.0.1:4571` attaches a Codex TUI to
+wakewire's shared server — injected turns stream in token-by-token as events
+arrive. (The desktop app shows injected turns when a thread is reopened; the
+live-streaming view is the CLI.)
+
 **For step-by-step setup of each source — with the exact terminal commands and
 copy-paste Codex prompts — see [docs/setup.md](docs/setup.md).**
 
@@ -124,7 +129,7 @@ A route = match + target + prompt template + sandbox.
 
 Deliveries are deduplicated by the source's delivery id, serialized per thread
 (never two turns in flight on one thread from wakewire), retried with capped
-backoff while the Codex app is closed, and coalesced into a single digest turn if a
+backoff whenever Codex is unreachable, and coalesced into a single digest turn if a
 route exceeds its rate limit (default 10/minute).
 
 ## How injection works (and its limits)
@@ -135,7 +140,7 @@ WakeWire talks to Codex through an adapter (config: settings key `sink.adapter`)
   `codex exec resume <threadId>` under the hood. Threads live in `~/.codex/sessions`,
   shared with the CLI and desktop app. The injected turn *runs to completion inside
   the daemon* (with `approvalPolicy: never` and your route's sandbox), and shows up
-  in the app when the thread is next opened/reloaded.
+  in the desktop app or `codex resume` when the thread is next opened.
 - **`codex-app-server`** — speaks the app-server v2 JSON-RPC protocol
   (`thread/resume` + `turn/start`) and can detect a turn already in flight on the
   thread and back off. Its best trick is **shared-ws mode** (set
