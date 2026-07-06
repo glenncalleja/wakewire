@@ -3,14 +3,7 @@
   "version": "0.1.0",
   "description": "Break the loop \u2014 deliver GitHub, Gmail, Slack, and any webhook's events (Linear, Sentry, ClickUp) into local Codex threads in near real time, configured conversationally.",
   "license": "MIT",
-  "keywords": [
-    "webhooks",
-    "github",
-    "gmail",
-    "slack",
-    "automation",
-    "events"
-  ],
+  "keywords": ["webhooks", "github", "gmail", "slack", "automation", "events"],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
