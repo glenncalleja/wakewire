@@ -8,6 +8,16 @@ No more agents polling on a timer: a webhook fires or an email lands, and second
 later a new turn appears in the thread you chose — the event framed as untrusted
 data, under instructions you wrote.
 
+## Demo
+
+<!-- DEMO VIDEO: edit this file on github.com and drag video/out/wakewire-demo.mp4
+     (2.8 MB) right below this comment — GitHub uploads it and inserts a
+     github.com/user-attachments/assets/… URL, which renders as an inline player.
+     Keep the URL on its own line. Then delete this comment. -->
+
+*(demo video — 33s: an email arrives and the agent's triage streams live into a
+Codex thread)*
+
 ```
  GitHub ──smee───▶ ┌──────────────────────────────────────────────┐
  Gmail ──IMAP───▶  │  wakewire daemon                             │
