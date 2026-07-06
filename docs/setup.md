@@ -40,17 +40,27 @@ paste the prompt into that same conversation.** A dedicated thread per source
 (e.g. one "Linear inbox" thread) is cleaner than reusing a working thread, since
 every event appends a turn.
 
-### Watching turns arrive live (optional)
+### Watching turns arrive live (optional, opt-in)
 
-The daemon runs a shared Codex app-server on `ws://127.0.0.1:4571`. Attach a TUI
-to watch turns stream in token-by-token:
+Live streaming requires the app-server adapter in shared-server mode — it is
+NOT on by default (the default `codex-sdk` adapter has no live view; turns
+appear when a thread is reopened). Enable it once:
+
+```bash
+wakewire config set sink.adapter codex-app-server
+wakewire config set sink.appServerListen ws://127.0.0.1:4571
+wakewire stop && wakewire start --detach
+```
+
+Then attach a TUI and open your target thread in it:
 
 ```bash
 codex --remote ws://127.0.0.1:4571
 ```
 
-Open your target thread in it. (The desktop app keeps its own server, so there
-turns appear on reload only — this is why the TUI is the live view.)
+(The desktop app keeps its own embedded server, so there turns appear on reload
+only — the TUI is the live view. The shared server is loopback-only and dies
+with the daemon.)
 
 ---
 

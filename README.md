@@ -40,10 +40,18 @@ thread id, creating a smee.io relay channel, giving you the webhook URL + secret
 to paste into GitHub, and adding the route. Test it with a push — the turn should
 arrive within seconds.
 
-**Watch it live:** `codex --remote ws://127.0.0.1:4571` attaches a Codex TUI to
-wakewire's shared server — injected turns stream in token-by-token as events
-arrive. (The desktop app shows injected turns when a thread is reopened; the
-live-streaming view is the CLI.)
+**Watch it live (opt-in):** switch to the app-server adapter in shared-server
+mode, and a `codex --remote` TUI streams injected turns in token-by-token:
+
+```bash
+wakewire config set sink.adapter codex-app-server
+wakewire config set sink.appServerListen ws://127.0.0.1:4571
+wakewire stop && wakewire start --detach
+codex --remote ws://127.0.0.1:4571      # open your target thread here
+```
+
+On the default `codex-sdk` adapter there is no live view — injected turns appear
+in the desktop app or `codex resume` when the thread is next opened.
 
 **For step-by-step setup of each source — with the exact terminal commands and
 copy-paste Codex prompts — see [docs/setup.md](docs/setup.md).**

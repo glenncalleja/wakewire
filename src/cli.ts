@@ -7,6 +7,7 @@ import { authGmail } from "./cli/auth-gmail.js";
 import { authImap } from "./cli/auth-imap.js";
 import { authSlack } from "./cli/auth-slack.js";
 import { authWebhook } from "./cli/auth-webhook.js";
+import { configGet, configList, configSet } from "./cli/config-cmd.js";
 import { installService, uninstallService } from "./cli/service.js";
 import { apiFetch, readDaemonState } from "./client.js";
 import { loadConfig } from "./config.js";
@@ -153,6 +154,22 @@ auth
   .option("--secret <secret>", "provide non-interactively (prefer the hidden prompt)")
   .action(async (opts: { source?: string; secret?: string }) => {
     await authWebhook(createLogger(), opts);
+  });
+
+const config = program.command("config").description("Read and write daemon settings");
+config
+  .command("list")
+  .description("Show known settings, current values, and what they do")
+  .action(() => configList());
+config
+  .command("get <key>")
+  .description("Print a setting's current value")
+  .action((key: string) => configGet(key));
+config
+  .command("set <key> <value>")
+  .description('Set a setting, e.g. wakewire config set sink.adapter codex-app-server')
+  .action(async (key: string, value: string) => {
+    await configSet(key, value);
   });
 
 const service = program.command("service").description("Run the daemon as a login service");
