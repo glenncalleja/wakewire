@@ -63,7 +63,7 @@ export class SourceManager {
 
   private async startOne(id: string): Promise<void> {
     const record = this.stores.sources.get(id);
-    if (!record || !record.enabled) return;
+    if (!record?.enabled) return;
     const ctx = {
       emit: this.onEvent,
       logger: this.logger.child({ source: id, kind: record.kind }),

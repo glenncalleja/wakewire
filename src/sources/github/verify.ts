@@ -9,7 +9,7 @@ export async function verifyGithubSignature(
   rawBody: string,
   signatureHeader: string | undefined | null,
 ): Promise<boolean> {
-  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) return false;
+  if (!signatureHeader?.startsWith("sha256=")) return false;
   try {
     return await verify(secret, rawBody, signatureHeader);
   } catch {

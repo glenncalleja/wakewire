@@ -5,7 +5,7 @@ import { loadConfig } from "../config.js";
 import { DeliveryQueue } from "../core/queue.js";
 import { matchRoutes } from "../core/router.js";
 import { openDatabase } from "../db/db.js";
-import { createStores, type Stores } from "../db/repos.js";
+import { createStores } from "../db/repos.js";
 import type { Logger } from "../logging.js";
 import { stateFilePath, wakewireHome } from "../paths.js";
 import { createSecretStore } from "../secrets/store.js";
@@ -24,7 +24,6 @@ export interface DaemonState {
 }
 
 export class Daemon {
-  private stores: Stores | null = null;
   private queue: DeliveryQueue | null = null;
   private sources: SourceManager | null = null;
   private server: Server | null = null;
@@ -37,7 +36,6 @@ export class Daemon {
     fs.mkdirSync(wakewireHome(), { recursive: true });
     this.db = openDatabase();
     const stores = createStores(this.db);
-    this.stores = stores;
     const config = loadConfig(stores.settings);
     const secrets = await createSecretStore(this.logger);
     const adapter = createAdapter(config, this.logger);

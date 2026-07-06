@@ -41,7 +41,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "biome check .",
+    "lint": "biome ci .",
     "lint:fix": "biome check --write .",
     "prepublishOnly": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
