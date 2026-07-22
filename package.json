@@ -50,7 +50,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@napi-rs/keyring": "^1.3.0",
     "@octokit/webhooks-methods": "^6.0.0",
-    "@openai/codex-sdk": "^0.142.5",
+    "@openai/codex-sdk": "^0.144.1",
     "@slack/socket-mode": "^2.0.7",
     "@slack/web-api": "^7.18.0",
     "better-sqlite3": "^12.11.1",
