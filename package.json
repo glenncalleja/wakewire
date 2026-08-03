@@ -55,7 +55,7 @@
     "@slack/web-api": "^8.0.0",
     "better-sqlite3": "^12.11.1",
     "commander": "^14.0.0",
-    "google-auth-library": "^10.9.0",
+    "google-auth-library": "^11.0.0",
     "hono": "^4.12.27",
     "html-to-text": "^10.0.0",
     "imapflow": "^1.4.6",
